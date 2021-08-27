@@ -32,8 +32,8 @@ export default class ClassesList extends React.Component<Listdata>
                         {this.props.listData.map((meeting, i) =>
                             <tr className="meetingItem">
                                 <td className="meetingSubject">{meeting.subject}</td>
-                                <td className="meetingStart">{(moment(meeting.start?.dateTime)).format('DD-MMM-YYYY HH:mm:ss')}</td>
-                                <td className="meetingEnd">{(moment(meeting.end?.dateTime)).format('DD-MMM-YYYY HH:mm:ss')}</td>
+                                <td className="meetingDate">{(moment(meeting.start?.dateTime)).format('DD-MMM-YYYY HH:mm:ss')}</td>
+                                <td className="meetingDate">{(moment(meeting.end?.dateTime)).format('DD-MMM-YYYY HH:mm:ss')}</td>
                                 <td>
                                     <Button onClick={async () => await this.startMeeting(meeting)}>Start Meeting</Button>
                                 </td>
@@ -52,6 +52,39 @@ export default class ClassesList extends React.Component<Listdata>
         const data = 
         {
             "JoinURL": meeting.onlineMeeting?.joinUrl,
+            "DisplayName": "ClassroomBot"
+        };
+
+        const endpoint = `https://${process.env.BOT_HOSTNAME}/joinCall`;
+        const requestObject = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(data) 
+        };
+
+        
+        let url = meeting.onlineMeeting?.joinUrl ? meeting.onlineMeeting?.joinUrl : "";
+
+
+        await this.joinBotToCall(url)
+            .then(() => 
+                {
+                    window.open(url);
+                })
+            .catch(error => 
+                {
+                    alert('Error loading from bot API: ' + error);
+                });
+
+    }
+
+    async joinBotToCall(joinUrl : string)
+    {
+        const data = 
+        {
+            "JoinURL": joinUrl,
             "DisplayName": "Bot"
         };
 
@@ -75,18 +108,12 @@ export default class ClassesList extends React.Component<Listdata>
                         console.info("Got bot join response");
                         console.info(responsePayload);
 
-                        let url = meeting.onlineMeeting?.joinUrl ? meeting.onlineMeeting?.joinUrl : "";
-                        window.open(url);
+                        return Promise.resolve(responsePayload);
                     }
                     else
                     {
-                        alert(`Got error response ${response.status} from Bot API.`);
+                        return Promise.reject(`Got error response ${response.status} from Bot API.`);
                     }
-                })
-            .catch(error => 
-                {
-                    alert('Error loading from bot API: ' + error.error.response.data.error);
                 });
-
     }
 }

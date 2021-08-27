@@ -26,9 +26,9 @@ export const ClassesTab = () => {
                 successCallback: (token: string) => {
                     const decoded: { [key: string]: any; } = jwtDecode(token) as { [key: string]: any; };
                     setName(decoded!.name);
-                    
+
                     setSsoToken(token);
-                    
+
                     microsoftTeams.appInitialization.notifySuccess();
                 },
                 failureCallback: (message: string) => {
@@ -60,53 +60,50 @@ export const ClassesTab = () => {
         };
 
         await fetch(endpoint, requestObject)
-            .then(async response => 
-                {
-                    if (response.ok) {
-                        
-                        const responsePayload = await response.json();
+            .then(async response => {
+                if (response.ok) {
 
-                        console.info("Found events:");
-                        console.info(responsePayload);
-                        setRecentEvents(responsePayload.value);
-                    }
-                    else
-                    {
-                        alert(`Got response ${response.status} from Graph. Check permissions?`);
-                    }
-                })
-            .catch(error => 
-                {
-                    alert('Error loading from Graph: ' + error.error.response.data.error);
-                });
-        
-        
-        }, [msGraphOboToken]);
+                    const responsePayload = await response.json();
 
-        useEffect(() => {
-            getTodaysMeetings();
-          }, [msGraphOboToken]);
+                    console.info("Found events:");
+                    console.info(responsePayload);
+                    setRecentEvents(responsePayload.value);
+                }
+                else {
+                    alert(`Got response ${response.status} from Graph. Check permissions?`);
+                }
+            })
+            .catch(error => {
+                alert('Error loading from Graph: ' + error.error.response.data.error);
+            });
+
+
+    }, [msGraphOboToken]);
+
+    useEffect(() => {
+        getTodaysMeetings();
+    }, [msGraphOboToken]);
 
     const exchangeSsoTokenForOboToken = useCallback(async () => {
         const response = await fetch(`/exchangeSsoTokenForOboToken/?ssoToken=${ssoToken}`);
         const responsePayload = await response.json();
         if (response.ok) {
-          setMsGraphOboToken(responsePayload.access_token);
+            setMsGraphOboToken(responsePayload.access_token);
         } else {
-          if (responsePayload!.error === "consent_required") {
-            setError("consent_required");
-          } else {
-            setError("unknown SSO error");
-          }
+            if (responsePayload!.error === "consent_required") {
+                setError("consent_required");
+            } else {
+                setError("unknown SSO error");
+            }
         }
-      }, [ssoToken]);
+    }, [ssoToken]);
 
-      useEffect(() => {
+    useEffect(() => {
         // if the SSO token is defined...
         if (ssoToken && ssoToken.length > 0) {
-          exchangeSsoTokenForOboToken();
+            exchangeSsoTokenForOboToken();
         }
-      }, [exchangeSsoTokenForOboToken, ssoToken]);
+    }, [exchangeSsoTokenForOboToken, ssoToken]);
 
     useEffect(() => {
         if (context) {
@@ -114,32 +111,30 @@ export const ClassesTab = () => {
         }
     }, [context]);
 
-    /**
-     * The render() method to create the UI of the tab
-     */
+
     return (
         <Provider theme={theme}>
             <Flex fill={true} column styles={{
                 padding: ".8rem 0 .8rem .5rem"
             }}>
                 <Flex.Item>
-                    <Header content="Start a class meeting with the ClassroomBot here." />
+                    <Header content="Start a class meeting with the ClassroomBot" />
                 </Flex.Item>
                 <Flex.Item>
                     <div>
                         <div>
-                            {recentEvents && 
+                            {recentEvents &&
                                 <div>
-                                    <h3>Todays Meetings:</h3>
+                                    <h3>Todays Meetings in Your Calendar:</h3>
                                     <ClassesList listData={recentEvents} />
                                     <Button onClick={() => getTodaysMeetings()}>Refresh</Button>
                                 </div>
                             }
                         </div>
-                        {error && 
+                        {error &&
                             <div>
                                 <div><Text content={`An SSO error occurred ${error}`} /></div>
-                                {error == 'consent_required'? <Text>Grant access</Text>: null }
+                                {error == 'consent_required' ? <Text>Grant access</Text> : null}
                             </div>
                         }
                     </div>

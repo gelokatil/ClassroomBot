@@ -28,7 +28,6 @@ using RecordingBot.Services.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
 using System.Threading.Tasks;
 using System.Timers;
 
@@ -124,47 +123,57 @@ namespace RecordingBot.Services.Bot
                 statusCheckTimer.Enabled = false;
                 foreach (var p in this.Call.Participants)
                 {
-                    var userHasWebcamOn = false;
-                    var userStreams = ((Participant)((IResource)p).Resource).MediaStreams;
-                    foreach (var s in userStreams)
+                    var participantIsThisBot = p.Resource?.Info?.Identity?.Application?.Id == _settings.AadAppId;
+                    if (!participantIsThisBot)
                     {
-                        if (s.MediaType.HasValue && s.MediaType.Value == Modality.Video && (s.Direction == MediaDirection.SendOnly || s.Direction == MediaDirection.SendReceive))
+                        var userHasWebcamOn = false;
+                        var userStreams = ((Participant)((IResource)p).Resource).MediaStreams;
+                        foreach (var s in userStreams)
                         {
-                            userHasWebcamOn = true;
-                        }
-                    }
-
-                    if (!userHasWebcamOn)
-                    {
-                        Console.WriteLine($"{p.Resource?.Info?.Identity?.User?.DisplayName} does not have webcam on");
-
-                        // Have we warned this user for this call yet?
-                        DateTime? lastBootWaring = UserWarned(this.Call.Id, p.Id);
-
-                        bool kickUser = lastBootWaring.HasValue && lastBootWaring.Value > DateTime.Now.AddMinutes(-5);
-                        if (!kickUser)
-                        {
-                            // Warn to turn on webcam
-                            var chatId = this.Call.Resource.ChatInfo.ThreadId;
-
-                            // Doesn't work for bots joined by policy
-                            await WarnUser(chatId, p);
-
-                            // Next time they get kicked out the channel
-                            SetUserHasBeenWarned(this.Call.Id, p.Id);
-                        }
-                        else
-                        {
-                            // User warned already; remove them from the call
-                            try
+                            if (s.MediaType.HasValue && s.MediaType.Value == Modality.Video && (s.Direction == MediaDirection.SendOnly || s.Direction == MediaDirection.SendReceive))
                             {
-                                await p.DeleteAsync().ConfigureAwait(false);
-                            }
-                            catch (ServiceException ex)
-                            {
-                                GraphLogger.Error(ex.Message);
+                                userHasWebcamOn = true;
                             }
                         }
+
+                        if (!userHasWebcamOn)
+                        {
+                            var userDisplayName = p.Resource?.Info?.Identity?.User?.DisplayName;
+                            Console.WriteLine($"{userDisplayName} does not have webcam on");
+
+                            // Have we warned this user for this call yet?
+                            DateTime? lastBootWaring = UserWarned(this.Call.Id, p.Id);
+
+                            bool kickUser = lastBootWaring.HasValue && lastBootWaring.Value > DateTime.Now.AddMinutes(-5);
+                            if (!kickUser)
+                            {
+                                // Warn to turn on webcam
+                                var chatId = this.Call.Resource.ChatInfo.ThreadId;
+
+                                // Doesn't work for bots joined by policy
+                                await WarnUser(chatId, p);
+
+                                // Next time they get kicked out the channel
+                                SetUserHasBeenWarned(this.Call.Id, p.Id);
+                            }
+                            else
+                            {
+                                // User warned already; remove them from the call
+                                try
+                                {
+                                    await p.DeleteAsync().ConfigureAwait(false);
+                                }
+                                catch (ServiceException ex)
+                                {
+                                    Console.WriteLine($"Couldn't remove {userDisplayName} - {ex.Message}");
+                                    GraphLogger.Error(ex.Message);
+                                }
+                            }
+                        }
+                    } // !participantIsThisBot
+                    else
+                    {
+                        Console.WriteLine("Ignoring own participant");
                     }
                 }
                 statusCheckTimer.Enabled = true;
@@ -284,48 +293,9 @@ namespace RecordingBot.Services.Bot
                     _eventPublisher.Publish("CallRecordingFlip", $"Failed to flip the recording status to {newStatus}");
                 }
 
-                try
-                {
-
-                    var call = await _graphApiClient.Communications.CallRecords[this.Call.Resource.CallChainId].Request().GetAsync();
-                    var meetingInfo = await GetMeting(_settings.GraphMeetingsUserGraphId, call.JoinWebUrl);
-                    var meetingId = this.Call.Resource.MeetingInfo;
-                    await _graphApiClient.Users[_settings.GraphMeetingsUserGraphId].OnlineMeetings[this.Call.Resource.Id].Request().GetAsync();
-
-                }
-                catch (ServiceException ex)
-                {
-
-                    throw;
-                }
             }).ForgetAndLogExceptionAsync(this.GraphLogger);
         }
 
-        async Task<OnlineMeeting> GetMeting(string userId, string joinUrl)
-        {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"https://graph.microsoft.com/beta/users/{userId}/onlineMeetings?$filter=JoinWebUrl%20eq%20'{joinUrl}'");
-
-            HttpResponseMessage msgSendResult = null;
-
-            try
-            {
-                await _graphApiClient.AuthenticationProvider.AuthenticateRequestAsync(request);
-                msgSendResult = await _graphApiClient.HttpProvider.SendAsync(request);
-            }
-            catch (ServiceException ex)
-            {
-                this.GraphLogger.Error(ex.ToString());
-            }
-
-            if (msgSendResult != null)
-            {
-                var bodyText = await msgSendResult.Content.ReadAsStringAsync();
-                msgSendResult.EnsureSuccessStatusCode();
-
-                return Newtonsoft.Json.JsonConvert.DeserializeObject<OnlineMeeting>(bodyText);
-            }
-            return null;
-        }
 
         /// <summary>
         /// Event fired when the call has been updated.
@@ -336,7 +306,7 @@ namespace RecordingBot.Services.Bot
         {
             GraphLogger.Info($"Call status updated to {e.NewResource.State} - {e.NewResource.ResultInfo?.Message}");
             // Event - Recording update e.g established/updated/start/ended
-            _eventPublisher.Publish($"Call{e.NewResource.State}", $"Call.ID {Call.Id} Sender.Id {sender.Id} status updated to {e.NewResource.State} - {e.NewResource.ResultInfo?.Message}");
+            Console.WriteLine($"Call{e.NewResource.State}", $"Call.ID {Call.Id} Sender.Id {sender.Id} status updated to {e.NewResource.State} - {e.NewResource.ResultInfo?.Message}");
 
             if (e.OldResource.State != e.NewResource.State && e.NewResource.State == CallState.Established)
             {
