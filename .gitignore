@@ -1,0 +1,13 @@
+BotService/Bot.Console/bin/
+BotService/Bot.Console/obj/
+BotService/Bot.Model/bin/
+BotService/Bot.Model/obj/
+BotService/Bot.Services/bin/
+BotService/Bot.Services/obj/
+
+BotService/Bot.Tests/bin/
+BotService/Bot.Tests/obj/
+
+BotService/ClassroomBot/.vs/
+TeamsApp/classroombot-teamsapp/.vscode/
+BotService/.vs/
