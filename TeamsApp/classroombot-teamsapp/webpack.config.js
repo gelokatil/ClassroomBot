@@ -75,7 +75,9 @@ const config = [{
     },
     plugins: [
         new webpack.EnvironmentPlugin({ PUBLIC_HOSTNAME: undefined, TAB_APP_ID: null, TAB_APP_URI: null, 
-            BOT_HOSTNAME: 'classroombotapp.ngrok.io-wp' })
+            BOT_HOSTNAME: 'classroombotapp.ngrok.io-wp', 
+            MICROSOFT_APP_ID: undefined, 
+            SSOTAB_APP_SCOPES: undefined })
     ]
 }
 ];

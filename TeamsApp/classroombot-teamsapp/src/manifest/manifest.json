@@ -34,7 +34,19 @@
       ]
     }
   ],
-  "bots": [],
+  "bots": [
+    {
+      "botId": "{{APPLICATION_ID}}",
+      "scopes": [
+        "personal",
+        "team"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "supportsCalling": true,
+      "supportsVideo": true
+    }
+  ],
   "connectors": [],
   "composeExtensions": [],
   "permissions": [

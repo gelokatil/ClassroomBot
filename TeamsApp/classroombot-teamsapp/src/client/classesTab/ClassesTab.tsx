@@ -5,6 +5,7 @@ import { useTeams } from "msteams-react-base-component";
 import * as microsoftTeams from "@microsoft/teams-js";
 import jwtDecode from "jwt-decode";
 import ClassesList from './ClassesList';
+import { User } from "@microsoft/microsoft-graph-types";
 
 /**
  * Implementation of the Classes content page
@@ -14,6 +15,8 @@ export const ClassesTab = () => {
     const [{ inTeams, theme, context }] = useTeams();
     const [entityId, setEntityId] = useState<string | undefined>();
     const [name, setName] = useState<string>();
+    const [consentUrl, setConsentUrl] = useState<string>();
+    const [user, setUser] = useState<User>();
     const [error, setError] = useState<string>();
     const [recentEvents, setRecentEvents] = useState<any[]>();
 
@@ -40,10 +43,56 @@ export const ClassesTab = () => {
                 },
                 resources: [process.env.TAB_APP_URI as string]
             });
+
+            // Build consent url
+            const c = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" + 
+            `client_id=${process.env.MICROSOFT_APP_ID}` + 
+            "&response_type=code" + 
+            `&redirect_uri=${window.location}` + 
+            "&response_mode=query" + 
+            "&scope=" + 
+            `${process.env.SSOTAB_APP_SCOPES}`;
+
+            setConsentUrl(c);
         } else {
             setEntityId("Not in Microsoft Teams");
         }
     }, [inTeams]);
+
+    const loadUserData = useCallback(async () => {
+        if (!msGraphOboToken) { return; }
+
+        // Load user data
+        const endpoint = `https://graph.microsoft.com/v1.0/me/`;
+        const requestObject = {
+            method: 'GET',
+            headers: {
+                "authorization": "bearer " + msGraphOboToken
+            }
+        };
+
+        await fetch(endpoint, requestObject)
+            .then(async response => {
+                if (response.ok) {
+
+                    const responsePayload = await response.json();
+
+                    console.info("Loaded user data:");
+                    console.info(responsePayload);
+                    setUser(responsePayload);
+                }
+                else {
+                    alert(`Got response ${response.status} from Graph. Check permissions?`);
+                }
+            })
+            .catch(error => {
+                alert('Error loading from Graph: ' + error.error.response.data.error);
+            });
+
+        getTodaysMeetings();
+
+
+    }, [msGraphOboToken]);
 
     const getTodaysMeetings = useCallback(async () => {
         if (!msGraphOboToken) { return; }
@@ -66,7 +115,7 @@ export const ClassesTab = () => {
                     const responsePayload = await response.json();
 
                     console.info("Found events:");
-                    console.info(responsePayload);
+                    console.info(responsePayload.value);
                     setRecentEvents(responsePayload.value);
                 }
                 else {
@@ -81,7 +130,7 @@ export const ClassesTab = () => {
     }, [msGraphOboToken]);
 
     useEffect(() => {
-        getTodaysMeetings();
+        loadUserData();
     }, [msGraphOboToken]);
 
     const exchangeSsoTokenForOboToken = useCallback(async () => {
@@ -91,7 +140,7 @@ export const ClassesTab = () => {
             setMsGraphOboToken(responsePayload.access_token);
         } else {
             if (responsePayload!.error === "consent_required") {
-                setError("consent_required");
+                setError(`consent_required`);
             } else {
                 setError("unknown SSO error");
             }
@@ -126,7 +175,7 @@ export const ClassesTab = () => {
                             {recentEvents &&
                                 <div>
                                     <h3>Todays Meetings in Your Calendar:</h3>
-                                    <ClassesList listData={recentEvents} />
+                                    <ClassesList listData={recentEvents} graphToken={msGraphOboToken} graphMeetingUser={user!} />
                                     <Button onClick={() => getTodaysMeetings()}>Refresh</Button>
                                 </div>
                             }
@@ -134,7 +183,11 @@ export const ClassesTab = () => {
                         {error &&
                             <div>
                                 <div><Text content={`An SSO error occurred ${error}`} /></div>
-                                {error == 'consent_required' ? <Text>Grant access</Text> : null}
+                                {error == 'consent_required' ? 
+                                    <div>
+                                        <a href={consentUrl} target="_blank">Grant access (new window)</a>
+                                    </div> 
+                                : null}
                             </div>
                         }
                     </div>
