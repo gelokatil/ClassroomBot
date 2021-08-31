@@ -8,7 +8,8 @@ import { Event, OnlineMeeting, OnlineMeetingInfo, User } from "@microsoft/micros
 type ClassListdata = {
     listData: Event[],
     graphToken: string | undefined,
-    graphMeetingUser: User
+    graphMeetingUser: User,
+    log: Function
 }
 
 
@@ -57,6 +58,8 @@ export default class ClassesList extends React.Component<ClassListdata>
 
         var meetingInstance = await this.getMeeting(meeting.onlineMeeting!);
 
+        this.props.log("Configuring meeting...", true);
+
         // Allow bot to join directly
         await this.setLobbyBypass(meetingInstance, true);
 
@@ -65,12 +68,15 @@ export default class ClassesList extends React.Component<ClassListdata>
             .then(async () => {
                 
                 // Everyone to pass through lobby 1st
+                this.props.log("Configuring lobby...");
                 await this.setLobbyBypass(meetingInstance, false);
+
+                this.props.log("All done. Opening meeting in new tab");
                 window.open(url);
 
             })
             .catch(error => {
-                alert('Error loading from bot API: ' + error);
+                this.props.log('Error from bot API: ' + error);
             });
     }
 
@@ -158,7 +164,7 @@ export default class ClassesList extends React.Component<ClassListdata>
         const data =
         {
             "JoinURL": joinUrl,
-            "DisplayName": "Bot"
+            "DisplayName": "ClassroomBot"
         };
 
         const endpoint = `https://${process.env.BOT_HOSTNAME}/joinCall`;
@@ -177,6 +183,7 @@ export default class ClassesList extends React.Component<ClassListdata>
 
                     const responsePayload = await response.json();
 
+                    this.props.log("Bot has accepted join request");
                     console.info("Got bot join response");
                     console.info(responsePayload);
 

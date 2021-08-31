@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTeams } from "msteams-react-base-component";
 import * as microsoftTeams from "@microsoft/teams-js";
 import jwtDecode from "jwt-decode";
+import MessagesList from './MessagesList';
 import ClassesList from './ClassesList';
 import { User } from "@microsoft/microsoft-graph-types";
 
@@ -19,6 +20,7 @@ export const ClassesTab = () => {
     const [user, setUser] = useState<User>();
     const [error, setError] = useState<string>();
     const [recentEvents, setRecentEvents] = useState<any[]>();
+    const [messages, setMessages] = useState<Array<string>>();
 
     const [ssoToken, setSsoToken] = useState<string>();
     const [msGraphOboToken, setMsGraphOboToken] = useState<string>();
@@ -52,6 +54,8 @@ export const ClassesTab = () => {
             "&response_mode=query" + 
             "&scope=" + 
             `${process.env.SSOTAB_APP_SCOPES}`;
+
+            setMessages(new Array<string>());
 
             setConsentUrl(c);
         } else {
@@ -160,6 +164,19 @@ export const ClassesTab = () => {
         }
     }, [context]);
 
+    const [ignored, forceUpdate] = React.useReducer(x => x + 1, 0);
+
+    const logMessage = ((log : string, clearPrevious : boolean) => {
+        if (clearPrevious !== undefined && clearPrevious === true)
+            setMessages(new Array<string>());
+
+        console.log(log);
+        messages?.push(log);
+
+        // Force render
+        forceUpdate(1);
+    });
+
 
     return (
         <Provider theme={theme}>
@@ -175,7 +192,7 @@ export const ClassesTab = () => {
                             {recentEvents &&
                                 <div>
                                     <h3>Todays Meetings in Your Calendar:</h3>
-                                    <ClassesList listData={recentEvents} graphToken={msGraphOboToken} graphMeetingUser={user!} />
+                                    <ClassesList listData={recentEvents} graphToken={msGraphOboToken} graphMeetingUser={user!} log={logMessage} />
                                     <Button onClick={() => getTodaysMeetings()}>Refresh</Button>
                                 </div>
                             }
@@ -185,10 +202,14 @@ export const ClassesTab = () => {
                                 <div><Text content={`An SSO error occurred ${error}`} /></div>
                                 {error == 'consent_required' ? 
                                     <div>
+                                        <p>You need to grant this application permissions to your calendar.</p>
                                         <a href={consentUrl} target="_blank">Grant access (new window)</a>
                                     </div> 
                                 : null}
                             </div>
+                        }
+                        {messages &&
+                            <MessagesList messages={messages} />
                         }
                     </div>
                 </Flex.Item>

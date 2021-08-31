@@ -34,19 +34,7 @@
       ]
     }
   ],
-  "bots": [
-    {
-      "botId": "{{APPLICATION_ID}}",
-      "scopes": [
-        "personal",
-        "team"
-      ],
-      "supportsFiles": false,
-      "isNotificationOnly": false,
-      "supportsCalling": true,
-      "supportsVideo": true
-    }
-  ],
+  "bots": [],
   "connectors": [],
   "composeExtensions": [],
   "permissions": [
@@ -56,7 +44,7 @@
   "validDomains": [
     "{{PUBLIC_HOSTNAME}}"
   ],
-  "showLoadingIndicator": true,
+  "showLoadingIndicator": false,
   "webApplicationInfo": {
     "id": "{{TAB_APP_ID}}",
     "resource": "{{TAB_APP_URI}}"
