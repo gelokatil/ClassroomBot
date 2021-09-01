@@ -58,10 +58,13 @@ export default class ClassesList extends React.Component<ClassListdata>
 
         var meetingInstance = await this.getMeeting(meeting.onlineMeeting!);
 
-        this.props.log("Configuring meeting...", true);
+        this.props.log("Configuring meeting to allow bot to skip lobby...", true);
 
         // Allow bot to join directly
         await this.setLobbyBypass(meetingInstance, true);
+
+        // Wait for bot to join (the request to join does not block until the bot is in the meeting)
+        await this.delay(10000);
 
         // Join bot
         await this.joinBotToCall(url)
@@ -80,8 +83,12 @@ export default class ClassesList extends React.Component<ClassListdata>
             });
     }
 
+    async delay(ms: number) {
+        return new Promise( resolve => setTimeout(resolve, ms) );
+    }
+
     async setLobbyBypass(meeting: OnlineMeeting, bypassLobby: boolean) {
-        let data = {};
+        let data:any = {};
 
         if (bypassLobby) {
             data =
@@ -102,6 +109,8 @@ export default class ClassesList extends React.Component<ClassListdata>
                 }
             };
         }
+
+        data.allowedPresenters = "organizer";
 
         const endpoint = `https://graph.microsoft.com/v1.0//users/${this.props.graphMeetingUser.id}/onlineMeetings/${meeting.id}`;
         const requestObject = {

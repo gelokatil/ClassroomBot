@@ -28,6 +28,8 @@ using RecordingBot.Services.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 
@@ -73,6 +75,11 @@ namespace RecordingBot.Services.Bot
         private readonly Timer statusCheckTimer;
         private GraphServiceClient _graphApiClient = null;
 
+        private List<IParticipant> _noKickRetryUserList = new();
+
+        // Key is: call ID + partipant ID
+        private Dictionary<string, DateTime> _removeWarningsGivenCache = new();
+
         /// <summary>
         /// Initializes a new instance of the <see cref="CallHandler" /> class.
         /// </summary>
@@ -91,8 +98,8 @@ namespace RecordingBot.Services.Bot
 
             this.Call = statefulCall;
             this.Call.OnUpdated += this.CallOnUpdated;
-  
-            this.BotMediaStream = new BotMediaStream(this.Call.GetLocalMediaSession(), this.Call.Id, this.GraphLogger, eventPublisher,  _settings);
+
+            this.BotMediaStream = new BotMediaStream(this.Call.GetLocalMediaSession(), this.Call.Id, this.GraphLogger, eventPublisher, _settings);
 
             if (_settings.CaptureEvents)
             {
@@ -109,11 +116,14 @@ namespace RecordingBot.Services.Bot
             _graphApiClient = new GraphServiceClient(new ClientCredentialProvider(confidentialClientApplication));
 
 
+
             // Initialize timer to check statuses
             var timer = new Timer(100 * 60); // every 60 seconds
             timer.AutoReset = true;
             timer.Elapsed += this.WebcamStatusCheck;
             this.statusCheckTimer = timer;
+
+            Console.WriteLine($"Joining call ID {statefulCall.Id} on chat thread {statefulCall.Resource.ChatInfo.ThreadId}");
         }
 
         private void WebcamStatusCheck(object sender, ElapsedEventArgs e)
@@ -123,6 +133,7 @@ namespace RecordingBot.Services.Bot
                 statusCheckTimer.Enabled = false;
                 foreach (var p in this.Call.Participants)
                 {
+                    // Don't check your own (bot) webcam status
                     var participantIsThisBot = p.Resource?.Info?.Identity?.Application?.Id == _settings.AadAppId;
                     if (!participantIsThisBot)
                     {
@@ -136,13 +147,14 @@ namespace RecordingBot.Services.Bot
                             }
                         }
 
-                        if (!userHasWebcamOn)
+                        // Find users without webcam on & that we haven't tried (and failed) to remove before
+                        if (!userHasWebcamOn && !_noKickRetryUserList.Contains(p))
                         {
                             var userDisplayName = p.Resource?.Info?.Identity?.User?.DisplayName;
                             Console.WriteLine($"{userDisplayName} does not have webcam on");
 
                             // Have we warned this user for this call yet?
-                            DateTime? lastBootWaring = UserWarned(this.Call.Id, p.Id);
+                            DateTime? lastBootWaring = UserWarned(this.Call.Id, p);
 
                             bool kickUser = lastBootWaring.HasValue && lastBootWaring.Value > DateTime.Now.AddMinutes(-5);
                             if (!kickUser)
@@ -167,14 +179,14 @@ namespace RecordingBot.Services.Bot
                                 {
                                     Console.WriteLine($"Couldn't remove {userDisplayName} - {ex.Message}");
                                     GraphLogger.Error(ex.Message);
+
+                                    // Don't try to remove again
+                                    _noKickRetryUserList.Add(p);
                                 }
                             }
+
                         }
                     } // !participantIsThisBot
-                    else
-                    {
-                        Console.WriteLine("Ignoring own participant");
-                    }
                 }
                 statusCheckTimer.Enabled = true;
             }).ForgetAndLogExceptionAsync(this.GraphLogger);
@@ -182,51 +194,46 @@ namespace RecordingBot.Services.Bot
 
         private async Task WarnUser(string chatId, IParticipant p)
         {
-            var config = SpeechConfig.FromSubscription("f519cbce2e2b4f3ba3e4f4ecfb8cece6", "westeurope");
-
-            var fileLocalPathDir = Path.Combine(this._settings.BaseContentDir, "WAVs");
-
-            System.IO.Directory.CreateDirectory(fileLocalPathDir);
-            var fileTile = $"{DateTime.Now.Ticks}.wav";
-            var filenameLocal = $@"{fileLocalPathDir}\{fileTile}";
-            using var audioConfig = AudioConfig.FromWavFileOutput(filenameLocal);
-            using var synthesizer = new SpeechSynthesizer(config, audioConfig);
 
             var userName = p.Resource?.Info?.Identity?.User?.DisplayName;
             if (!string.IsNullOrEmpty(userName))
             {
-                //await synthesizer.SpeakTextAsync($"{userName}, please turn on your webcam.");
-
-                var warningMedia = new MediaPrompt
-                {
-                    MediaInfo = new MediaInfo
-                    {
-                        Uri = $"https://{_settings.ServiceDnsName}/WAVs/bot-incoming.wav",
-                        ResourceId = Guid.NewGuid().ToString(),
-                    }
-                };
-
                 if (Call.Resource.State == CallState.Established)
                 {
-                    try
-                    {
-                        await this.Call.RecordResponseAsync(3).ConfigureAwait(false);
-                        //await this.Call.PlayPromptAsync(new List<MediaPrompt> { warningMedia }).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        GraphLogger.Error(ex.Message);
-                    }
+                    //await this.Call.PlayPromptAsync(new List<MediaPrompt> { warningMedia }).ConfigureAwait(false);
+                    await Task.CompletedTask;
                 }
             }
         }
 
-        private DateTime? UserWarned(string callId, string participantId)
+        async Task<string> PostToCall(string url, string json)
         {
-            var key = callId + participantId;
-            if (warningsCache.ContainsKey(key))
+            var req = new HttpRequestMessage(HttpMethod.Post, url);
+            await _graphApiClient.AuthenticationProvider.AuthenticateRequestAsync(req);
+
+            using (var client = new HttpClient())
+            using (var stringContent = new StringContent(json, Encoding.UTF8, "application/json"))
             {
-                return warningsCache[key];
+                req.Content = stringContent;
+
+                using (var response = await client
+                    .SendAsync(req, HttpCompletionOption.ResponseHeadersRead)
+                    .ConfigureAwait(false))
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    response.EnsureSuccessStatusCode();
+                    return responseBody;
+                }
+            }
+        }
+
+
+        private DateTime? UserWarned(string callId, IParticipant participant)
+        {
+            var key = callId + participant.Id;
+            if (_removeWarningsGivenCache.ContainsKey(key))
+            {
+                return _removeWarningsGivenCache[key];
             }
             return null;
         }
@@ -234,17 +241,16 @@ namespace RecordingBot.Services.Bot
         private void SetUserHasBeenWarned(string callId, string participantId)
         {
             var key = callId + participantId;
-            if (warningsCache.ContainsKey(key))
+            if (_removeWarningsGivenCache.ContainsKey(key))
             {
-                warningsCache[key] = DateTime.Now;
+                _removeWarningsGivenCache[key] = DateTime.Now;
             }
             else
             {
-                warningsCache.Add(key, DateTime.Now);
+                _removeWarningsGivenCache.Add(key, DateTime.Now);
             }
         }
 
-        private Dictionary<string, DateTime> warningsCache = new();
 
         /// <inheritdoc/>
         protected override Task HeartbeatAsync(ElapsedEventArgs args)
@@ -326,7 +332,7 @@ namespace RecordingBot.Services.Bot
             {
                 if (BotMediaStream != null)
                 {
-                   var aQoE = BotMediaStream.GetAudioQualityOfExperienceData();
+                    var aQoE = BotMediaStream.GetAudioQualityOfExperienceData();
 
                     if (aQoE != null)
                     {
