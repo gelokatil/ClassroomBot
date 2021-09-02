@@ -11,3 +11,5 @@ BotService/Bot.Tests/obj/
 BotService/ClassroomBot/.vs/
 TeamsApp/classroombot-teamsapp/.vscode/
 BotService/.vs/
+tls.crt
+tls.key

@@ -227,6 +227,12 @@ namespace RecordingBot.Services.ServiceSetup
                 ApplicationId = this.AadAppId,
             };
 
+            Console.WriteLine($"{nameof(MediaPlatformSettings)}:");
+            Console.WriteLine($"{nameof(MediaPlatformSettings.MediaPlatformInstanceSettings.CertificateThumbprint)}: {MediaPlatformSettings.MediaPlatformInstanceSettings.CertificateThumbprint}.");
+            Console.WriteLine($"{nameof(MediaPlatformSettings.MediaPlatformInstanceSettings.InstanceInternalPort)}: {MediaPlatformSettings.MediaPlatformInstanceSettings.InstanceInternalPort}.");
+            Console.WriteLine($"{nameof(MediaPlatformSettings.MediaPlatformInstanceSettings.InstancePublicPort)}: {MediaPlatformSettings.MediaPlatformInstanceSettings.InstancePublicPort}.");
+            Console.WriteLine($"{nameof(MediaPlatformSettings.MediaPlatformInstanceSettings.ServiceFqdn)}: {MediaPlatformSettings.MediaPlatformInstanceSettings.ServiceFqdn}.");
+            Console.WriteLine();
 
             // Initialize Audio Settings
             this.AudioSettings = new AudioSettings

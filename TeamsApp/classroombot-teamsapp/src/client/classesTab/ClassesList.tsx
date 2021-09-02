@@ -64,7 +64,7 @@ export default class ClassesList extends React.Component<ClassListdata>
         await this.setLobbyBypass(meetingInstance, true);
 
         // Wait for bot to join (the request to join does not block until the bot is in the meeting)
-        await this.delay(10000);
+        //await this.delay(10000);
 
         // Join bot
         await this.joinBotToCall(url)
