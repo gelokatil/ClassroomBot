@@ -13,3 +13,5 @@ TeamsApp/classroombot-teamsapp/.vscode/
 BotService/.vs/
 tls.crt
 tls.key
+.vs/slnx.sqlite
+.vs/VSWorkspaceState.json

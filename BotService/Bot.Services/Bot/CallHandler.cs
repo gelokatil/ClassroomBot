@@ -12,8 +12,6 @@
 // <summary></summary>
 // ***********************************************************************>
 
-using Microsoft.CognitiveServices.Speech;
-using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Graph;
 using Microsoft.Graph.Auth;
 using Microsoft.Graph.Communications.Calls;
@@ -28,8 +26,6 @@ using RecordingBot.Services.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 
@@ -206,27 +202,6 @@ namespace RecordingBot.Services.Bot
             }
         }
 
-        async Task<string> PostToCall(string url, string json)
-        {
-            var req = new HttpRequestMessage(HttpMethod.Post, url);
-            await _graphApiClient.AuthenticationProvider.AuthenticateRequestAsync(req);
-
-            using (var client = new HttpClient())
-            using (var stringContent = new StringContent(json, Encoding.UTF8, "application/json"))
-            {
-                req.Content = stringContent;
-
-                using (var response = await client
-                    .SendAsync(req, HttpCompletionOption.ResponseHeadersRead)
-                    .ConfigureAwait(false))
-                {
-                    var responseBody = await response.Content.ReadAsStringAsync();
-                    response.EnsureSuccessStatusCode();
-                    return responseBody;
-                }
-            }
-        }
-
 
         private DateTime? UserWarned(string callId, IParticipant participant)
         {
@@ -310,10 +285,11 @@ namespace RecordingBot.Services.Bot
         /// <param name="e">The event args containing call changes.</param>
         private async void CallOnUpdated(ICall sender, ResourceEventArgs<Call> e)
         {
-            GraphLogger.Info($"Call status updated to {e.NewResource.State} - {e.NewResource.ResultInfo?.Message}");
+            var msg = $"Call status updated to {e.NewResource.State} - {e.NewResource.ResultInfo?.Message}";
+            GraphLogger.Info(msg);
             // Event - Recording update e.g established/updated/start/ended
-            Console.WriteLine($"Call{e.NewResource.State}", $"Call.ID {Call.Id} Sender.Id {sender.Id} status updated to {e.NewResource.State} - {e.NewResource.ResultInfo?.Message}");
-
+            Console.WriteLine(msg);
+            _eventPublisher.Publish("CallOnUpdated", msg);
             if (e.OldResource.State != e.NewResource.State && e.NewResource.State == CallState.Established)
             {
                 if (!_isDisposed)

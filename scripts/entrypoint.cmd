@@ -7,7 +7,7 @@ IF "%1"=="-v" (
 
 :: --- Ensure the VC_redist is installed for the Microsoft.Skype.Bots.Media Library ---
 echo Setup: Starting VC_redist
-.\VC_redist.x64.exe /quiet /norestart
+:: .\VC_redist.x64.exe /quiet /norestart
 
 echo Setup: Converting certificate
 powershell.exe C:\Program` Files\OpenSSL\bin\openssl.exe pkcs12 -export -out C:\bot\certificate.pfx -passout pass: -inkey C:\certs\tls.key -in C:\certs\tls.crt
