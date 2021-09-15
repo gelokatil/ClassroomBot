@@ -5,7 +5,7 @@ import { useTeams } from "msteams-react-base-component";
 import * as microsoftTeams from "@microsoft/teams-js";
 import jwtDecode from "jwt-decode";
 import MessagesList from './MessagesList';
-import ClassesList from './ClassesList';
+import GroupsList from './GroupsList';
 import { User } from "@microsoft/microsoft-graph-types";
 
 /**
@@ -19,7 +19,7 @@ export const ClassesTab = () => {
     const [consentUrl, setConsentUrl] = useState<string>();
     const [user, setUser] = useState<User>();
     const [error, setError] = useState<string>();
-    const [recentEvents, setRecentEvents] = useState<any[]>();
+    const [allGroups, setAllGroups] = useState<any[]>();
     const [messages, setMessages] = useState<Array<string>>();
 
     const [ssoToken, setSsoToken] = useState<string>();
@@ -93,18 +93,18 @@ export const ClassesTab = () => {
                 alert('Error loading from Graph: ' + error.error.response.data.error);
             });
 
-        getTodaysMeetings();
+        getGroups();
 
 
     }, [msGraphOboToken]);
 
-    const getTodaysMeetings = useCallback(async () => {
+    const getGroups = useCallback(async () => {
         if (!msGraphOboToken) { return; }
 
         const now = new Date();
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const endpoint = `https://graph.microsoft.com/v1.0/me/calendarview?startdatetime=${now.toISOString()}&enddatetime=${tomorrow.toISOString()}`;
+        const endpoint = `https://graph.microsoft.com/v1.0/groups`;
         const requestObject = {
             method: 'GET',
             headers: {
@@ -118,9 +118,9 @@ export const ClassesTab = () => {
 
                     const responsePayload = await response.json();
 
-                    console.info("Found events:");
+                    console.info("Found groups:");
                     console.info(responsePayload.value);
-                    setRecentEvents(responsePayload.value);
+                    setAllGroups(responsePayload.value);
                 }
                 else {
                     alert(`Got response ${response.status} from Graph. Check permissions?`);
@@ -189,11 +189,11 @@ export const ClassesTab = () => {
                 <Flex.Item>
                     <div>
                         <div>
-                            {recentEvents &&
+                            {allGroups &&
                                 <div>
-                                    <h3>Todays Meetings in Your Calendar:</h3>
-                                    <ClassesList listData={recentEvents} graphToken={msGraphOboToken} graphMeetingUser={user!} log={logMessage} />
-                                    <Button onClick={() => getTodaysMeetings()}>Refresh</Button>
+                                    <h3>Groups:</h3>
+                                    <GroupsList listData={allGroups} graphToken={msGraphOboToken} graphMeetingUser={user!} log={logMessage} />
+                                    <Button onClick={() => getGroups()}>Refresh</Button>
                                 </div>
                             }
                         </div>
@@ -202,7 +202,7 @@ export const ClassesTab = () => {
                                 <div><Text content={`An SSO error occurred ${error}`} /></div>
                                 {error == 'consent_required' ? 
                                     <div>
-                                        <p>You need to grant this application permissions to your calendar.</p>
+                                        <p>You need to grant this application the right permissions to your data.</p>
                                         <a href={consentUrl} target="_blank">Grant access (new window)</a>
                                     </div> 
                                 : null}

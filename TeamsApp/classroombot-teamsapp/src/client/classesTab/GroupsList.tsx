@@ -2,11 +2,11 @@ import React, { FunctionComponent } from "react";
 import * as moment from 'moment';
 import { Button, LeftParenthesisKey } from "@fluentui/react-northstar";
 
-import { Event, OnlineMeeting, OnlineMeetingInfo, User } from "@microsoft/microsoft-graph-types";
+import { Event, Group, OnlineMeeting, OnlineMeetingInfo, User } from "@microsoft/microsoft-graph-types";
 
 
 type ClassListdata = {
-    listData: Event[],
+    listData: Group[],
     graphToken: string | undefined,
     graphMeetingUser: User,
     log: Function
@@ -25,18 +25,14 @@ export default class ClassesList extends React.Component<ClassListdata>
                 <table id="meetingListContainer">
                     <thead>
                         <tr>
-                            <th>Subject</th>
-                            <th>Start</th>
-                            <th>End</th>
+                            <th>Group name</th>
                         </tr>
                     </thead>
                     <tbody>
 
                         {this.props.listData.map((meeting, i) =>
                             <tr className="meetingItem">
-                                <td className="meetingSubject">{meeting.subject}</td>
-                                <td className="meetingDate">{(moment(meeting.start?.dateTime)).format('DD-MMM-YYYY HH:mm:ss')}</td>
-                                <td className="meetingDate">{(moment(meeting.end?.dateTime)).format('DD-MMM-YYYY HH:mm:ss')}</td>
+                                <td className="meetingSubject">{meeting.displayName}</td>
                                 <td>
                                     <Button onClick={async () => await this.startMeeting(meeting)} disabled={!this.hasTeamsMeeting(meeting)}>Start Meeting</Button>
                                 </td>
