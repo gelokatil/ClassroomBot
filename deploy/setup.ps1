@@ -84,9 +84,7 @@ Write-Output "Creating ingress-nginx namespace"
 kubectl create namespace ingress-nginx
 
 # Create a Public Ip on the MC_RESOURCEGROUP_AKSCLUSTERNAME_AZUREREGION Resource group
-Write-Output "About get public ip: $publicIpName (this should have been created on the previous step)"
-$publicIpAddress = "20.73.235.135"
-Write-Output "Got public ip: $publicIpAddress"
+$publicIpAddress = "20.93.206.211"
 
 Write-Output "Adding helm repositories"
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx

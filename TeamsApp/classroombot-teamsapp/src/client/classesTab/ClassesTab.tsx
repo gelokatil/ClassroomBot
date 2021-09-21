@@ -47,13 +47,13 @@ export const ClassesTab = () => {
             });
 
             // Build consent url
-            const c = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" + 
-            `client_id=${process.env.MICROSOFT_APP_ID}` + 
-            "&response_type=code" + 
-            `&redirect_uri=${window.location}` + 
-            "&response_mode=query" + 
-            "&scope=" + 
-            `${process.env.SSOTAB_APP_SCOPES}`;
+            const c = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" +
+                `client_id=${process.env.MICROSOFT_APP_ID}` +
+                "&response_type=code" +
+                `&redirect_uri=${window.location}` +
+                "&response_mode=query" +
+                "&scope=" +
+                `${process.env.SSOTAB_APP_SCOPES}`;
 
             setMessages(new Array<string>());
 
@@ -166,7 +166,7 @@ export const ClassesTab = () => {
 
     const [ignored, forceUpdate] = React.useReducer(x => x + 1, 0);
 
-    const logMessage = ((log : string, clearPrevious : boolean) => {
+    const logMessage = ((log: string, clearPrevious: boolean) => {
         if (clearPrevious !== undefined && clearPrevious === true)
             setMessages(new Array<string>());
 
@@ -200,12 +200,12 @@ export const ClassesTab = () => {
                         {error &&
                             <div>
                                 <div><Text content={`An SSO error occurred ${error}`} /></div>
-                                {error == 'consent_required' ? 
+                                {error == 'consent_required' ?
                                     <div>
                                         <p>You need to grant this application the right permissions to your data.</p>
                                         <a href={consentUrl} target="_blank">Grant access (new window)</a>
-                                    </div> 
-                                : null}
+                                    </div>
+                                    : null}
                             </div>
                         }
                         {messages &&

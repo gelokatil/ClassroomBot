@@ -1,8 +1,9 @@
 import React, { FunctionComponent } from "react";
 import * as moment from 'moment';
-import { Button, LeftParenthesisKey } from "@fluentui/react-northstar";
+import { Button, Header, Form, FormInput, FormButton } from "@fluentui/react-northstar";
 
-import { Event, Group, OnlineMeeting, OnlineMeetingInfo, User } from "@microsoft/microsoft-graph-types";
+
+import { Channel, ChatMessageMention, DirectoryObject, Event, Group, OnlineMeeting, OnlineMeetingInfo, User } from "@microsoft/microsoft-graph-types";
 
 
 type ClassListdata = {
@@ -11,80 +12,336 @@ type ClassListdata = {
     graphMeetingUser: User,
     log: Function
 }
+type ClassListProps = {
+    selectedGroup: Group | null,
+    newMeetingName: string,
+    currentMeeting: OnlineMeeting
+}
 
-
-export default class ClassesList extends React.Component<ClassListdata>
+export default class ClassesList extends React.Component<ClassListdata, ClassListProps>
 {
+    constructor(props) {
+        super(props);
+        this.setState({ selectedGroup: null });
+    }
+
+    handleNewMeetingNameChange(event) {
+        this.setState({newMeetingName: event.target.value});
+      }
+
     render() {
         let output;
-        if (this.props.listData.length == 0) {
-            output = <div>No events found in your calendar today.</div>;
-        }
-        else
-            output =
-                <table id="meetingListContainer">
-                    <thead>
-                        <tr>
-                            <th>Group name</th>
-                        </tr>
-                    </thead>
-                    <tbody>
 
-                        {this.props.listData.map((meeting, i) =>
-                            <tr className="meetingItem">
-                                <td className="meetingSubject">{meeting.displayName}</td>
-                                <td>
-                                    <Button onClick={async () => await this.startMeeting(meeting)} disabled={!this.hasTeamsMeeting(meeting)}>Start Meeting</Button>
-                                </td>
+        if (this.state?.selectedGroup) {
+            let header = this.state.selectedGroup.displayName;
+            output =
+                <Form
+                    onSubmit={() => this.startMeeting(this.state.selectedGroup!)} >
+                    <Header as="h1" content={header} />
+
+                    <FormInput
+                        label="Meeting subject"
+                        required
+                        value={this.state.newMeetingName} onChange={e => this.handleNewMeetingNameChange(e)} 
+                        showSuccessIndicator={false}
+                    />
+
+                    <FormButton content="Start New Class" primary />
+                    <Button onClick={async () => this.joinLastClass()} secondary 
+                        disabled={this.state.currentMeeting !== null}>Join Last Class</Button>
+                    <Button onClick={async () => this.cancelCreateMeeting()} secondary>Cancel</Button>
+                </Form>;
+        }
+        else {
+            if (this.props.listData.length == 0) {
+                output = <div>No groups found</div>;
+            }
+            else
+                output =
+                    <table id="meetingListContainer">
+                        <thead>
+                            <tr>
+                                <th>Group name</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>;
+                        </thead>
+                        <tbody>
+
+                            {this.props.listData.map((group, i) =>
+                                <tr className="meetingItem">
+                                    <td className="meetingSubject">{group.displayName}</td>
+                                    <td>
+                                        <Button onClick={async () => this.createMeeting(group)} primary>Start Meeting</Button>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>;
+        }
+
 
         return <div>{output}</div>;
     }
 
-    hasTeamsMeeting(meeting: Event) : boolean {
+    hasTeamsMeeting(meeting: Event): boolean {
         return meeting.onlineMeeting !== null;
     }
 
-    async startMeeting(meeting: Event) {
+    createMeeting(group: Group) {
+        this.setState({ selectedGroup: group });
+    }
+    cancelCreateMeeting() {
+        this.setState({ selectedGroup: null });
+    }
 
-        let url = meeting.onlineMeeting?.joinUrl ? meeting.onlineMeeting?.joinUrl : "";
+    joinLastClass()
+    {
+        window.open(this.state.currentMeeting?.joinWebUrl!);
+    }
 
-        var meetingInstance = await this.getMeeting(meeting.onlineMeeting!);
+    async startMeeting(group: Group) {
+        this.createNewMeeting(group)
+            .then(async newMeeting => {
 
-        this.props.log("Configuring meeting to allow bot to skip lobby...", true);
+                const channelId = await this.getGeneralChannelId(group);
 
-        // Allow bot to join directly
-        await this.setLobbyBypass(meetingInstance, true);
+                this.postMeetingToGroup(group, newMeeting, channelId)
+                    .then(async () => {
 
-        // Wait for bot to join (the request to join does not block until the bot is in the meeting)
-        //await this.delay(10000);
+                        // Join bot
+                        await this.joinBotToCall(newMeeting.joinWebUrl!)
+                            .then(async () => {
 
-        // Join bot
-        await this.joinBotToCall(url)
-            .then(async () => {
-                
-                // Everyone to pass through lobby 1st
-                this.props.log("Configuring lobby...");
-                await this.setLobbyBypass(meetingInstance, false);
+                                this.setState({ currentMeeting: newMeeting });
 
-                this.props.log("All done. Opening meeting in new tab");
-                window.open(url);
+                                // Everyone to pass through lobby 1st
+                                this.props.log("Configuring lobby...");
+                                await this.setLobbyBypass(newMeeting, false);
+
+                                this.props.log("All done. Opening meeting in new tab");
+                                this.joinLastClass();
+                            })
+                            .catch(error => {
+                                this.props.log('Error from bot API: ' + error);
+                            });
+                    });
+
 
             })
             .catch(error => {
-                this.props.log('Error from bot API: ' + error);
+                this.props.log('Error: ' + error);
             });
     }
 
+    
+    async getGroupDirectoryObjects(group: Group): Promise<Array<DirectoryObject>> {
+
+        this.props.log("Getting general channel ID...", true);
+
+        // https://docs.microsoft.com/en-us/graph/api/group-list-members
+        const endpoint = `https://graph.microsoft.com/v1.0/groups/${group.id}/members`;
+        const requestObject = {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                "authorization": "bearer " + this.props.graphToken
+            }
+        };
+
+
+        const response = await fetch(endpoint, requestObject);
+        const responsePayload = await response.json();
+
+        console.info("Got group-members result");
+        console.info(responsePayload);
+
+
+        const members: Array<DirectoryObject> = responsePayload.value;
+        return members;
+    }
+
+    async getUser(dirOjbect: DirectoryObject): Promise<User> {
+
+        this.props.log("Getting user ...", true);
+
+        // https://docs.microsoft.com/en-us/graph/api/user-get
+        const endpoint = `https://graph.microsoft.com/v1.0/users/${dirOjbect.id}`;
+        const requestObject = {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                "authorization": "bearer " + this.props.graphToken
+            }
+        };
+
+
+        const response = await fetch(endpoint, requestObject);
+        const responsePayload = await response.json();
+
+        console.info("Got user result");
+        console.info(responsePayload);
+
+        return responsePayload;
+    }
+
+    async getGeneralChannelId(group: Group): Promise<string> {
+
+        this.props.log("Getting general channel ID...", true);
+
+        const endpoint = `https://graph.microsoft.com/v1.0/teams/${group.id}/channels?$filter=displayName eq 'General'`;
+        const requestObject = {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                "authorization": "bearer " + this.props.graphToken
+            }
+        };
+
+
+        const response = await fetch(endpoint, requestObject);
+        const responsePayload = await response.json();
+
+        console.info("Got channel result");
+        console.info(responsePayload);
+
+
+        const channels: Array<Channel> = responsePayload.value;
+        return channels[0].id!;
+    }
+
+    async createNewMeeting(group: Group): Promise<OnlineMeeting> {
+
+        this.props.log("Creating new meeting...", true);
+
+        // https://docs.microsoft.com/en-us/graph/api/resources/onlinemeeting
+        let data: any = {
+            "lobbyBypassSettings":
+            {
+                "scope": "organizer"
+            },
+            "allowedPresenters": "organizer",
+            "subject" : this.state.newMeetingName,
+            "participants":
+            {
+                "organizer": {
+                    "identity": { "@odata.type": "#microsoft.graph.identitySet" },
+                    "upn": this.props.graphMeetingUser.userPrincipalName,
+                    "role": "presenter"
+                },
+                "attendees":
+                    [
+                        {
+                            "identity": { "@odata.type": "#microsoft.graph.identitySet" },
+                            "upn": group.mail,
+                            "role": "attendee"
+                        }
+                    ]
+            }
+        };
+
+        const endpoint = `https://graph.microsoft.com/v1.0/users/${this.props.graphMeetingUser.id}/onlineMeetings`;
+        const requestObject = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                "authorization": "bearer " + this.props.graphToken
+            },
+            body: JSON.stringify(data)
+        };
+
+
+        const response = await fetch(endpoint, requestObject);
+        const responsePayload = await response.json();
+        console.info("Got meeting create result");
+        console.info(responsePayload);
+        return responsePayload as OnlineMeeting;
+
+    }
+
+    async postMeetingToGroup(group: Group, meeting: OnlineMeeting, channelId: string) {
+
+        const groupDirObjects = await this.getGroupDirectoryObjects(group);
+        this.props.log("Publishing meeting to group channel...", true);
+
+        let membersHtml : string = '';
+        let mentions : Array<ChatMessageMention> = [];
+        if(groupDirObjects)
+        {
+            let userQueries : Array<Promise<User>> = [];
+            groupDirObjects.map((member, i) =>
+            {
+                userQueries.push(this.getUser(member));
+            }
+            );
+
+            let users : Array<User> = [];
+            const allUserQs = await Promise.all(userQueries);
+            allUserQs.map(user=> { 
+                console.log(user);
+                users.push(user);
+            }
+            );
+
+            users.map((user, i) => 
+            { 
+                membersHtml += `<at id="${i}">${user.displayName}</at>, `;
+                mentions.push(
+                    {
+                        id: i,
+                        mentionText: user.displayName,
+                        mentioned:
+                        {
+                            user:
+                            {
+                                id: user.id,
+                                displayName: user.displayName                            }
+                        }
+                    });
+            });
+        }
+
+
+        let data: any = {
+            "body": {
+                "contentType": "html",
+                "content": `<div>${meeting.subject} - <a href="${meeting.joinWebUrl}">join class now</a></div>
+                            <div>${membersHtml}</div>`
+            },
+            "mentions": mentions
+        };
+
+        // https://docs.microsoft.com/en-us/graph/api/channel-post-messages
+        const endpoint = `https://graph.microsoft.com/v1.0/teams/${group.id}/channels/${channelId}/messages`;
+        const requestObject = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                "authorization": "bearer " + this.props.graphToken
+            },
+            body: JSON.stringify(data)
+        };
+
+
+        const response = await fetch(endpoint, requestObject);
+
+
+        if (response.ok) {
+
+            const responsePayload = await response.json();
+            console.info("Got meeting create result");
+            console.info(responsePayload);
+            return responsePayload as Event;
+        }
+        else {
+            return Promise.reject(`Got response ${response.status} from Graph. Check permissions?`);
+        }
+    }
+
     async delay(ms: number) {
-        return new Promise( resolve => setTimeout(resolve, ms) );
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     async setLobbyBypass(meeting: OnlineMeeting, bypassLobby: boolean) {
-        let data:any = {};
+        let data: any = {};
 
         if (bypassLobby) {
             data =
@@ -95,8 +352,7 @@ export default class ClassesList extends React.Component<ClassListdata>
                 }
             };
         }
-        else
-        {
+        else {
             data =
             {
                 "lobbyBypassSettings":
@@ -136,8 +392,8 @@ export default class ClassesList extends React.Component<ClassListdata>
             });
     }
 
-    
-    async getMeeting(meetingInfo: OnlineMeetingInfo) : Promise<OnlineMeeting> {
+
+    async getMeeting(meetingInfo: OnlineMeetingInfo): Promise<OnlineMeeting> {
 
         const endpoint = `https://graph.microsoft.com/beta/users/${this.props.graphMeetingUser.id}/onlineMeetings?$filter=JoinWebUrl%20eq%20'${meetingInfo.joinUrl}'`;
         const requestObject = {
