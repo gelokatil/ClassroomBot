@@ -58,6 +58,10 @@ export default class ClassesList extends React.Component<ClassListdata, ClassLis
             }
             else
                 output =
+                <div>
+                    
+                    <h3>Your Groups:</h3>
+                
                     <table id="meetingListContainer">
                         <thead>
                             <tr>
@@ -75,7 +79,8 @@ export default class ClassesList extends React.Component<ClassListdata, ClassLis
                                 </tr>
                             )}
                         </tbody>
-                    </table>;
+                    </table>
+                </div>;
         }
 
 
@@ -102,7 +107,7 @@ export default class ClassesList extends React.Component<ClassListdata, ClassLis
         this.createNewMeeting(group)
             .then(async newMeeting => {
 
-                const channelId = await this.getGeneralChannelId(group);
+                const channelId = await this.getDefaultChannelId(group);
 
                 this.postMeetingToGroup(group, newMeeting, channelId)
                     .then(async () => {
@@ -183,11 +188,11 @@ export default class ClassesList extends React.Component<ClassListdata, ClassLis
         return responsePayload;
     }
 
-    async getGeneralChannelId(group: Group): Promise<string> {
+    async getDefaultChannelId(group: Group): Promise<string> {
 
         this.props.log("Getting general channel ID...", true);
 
-        const endpoint = `https://graph.microsoft.com/v1.0/teams/${group.id}/channels?$filter=displayName eq 'General'`;
+        const endpoint = `https://graph.microsoft.com/v1.0/teams/${group.id}/primaryChannel`;
         const requestObject = {
             method: 'GET',
             headers: {

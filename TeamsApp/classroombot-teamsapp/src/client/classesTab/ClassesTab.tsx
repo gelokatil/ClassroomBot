@@ -6,7 +6,7 @@ import * as microsoftTeams from "@microsoft/teams-js";
 import jwtDecode from "jwt-decode";
 import MessagesList from './MessagesList';
 import GroupsList from './GroupsList';
-import { User } from "@microsoft/microsoft-graph-types";
+import { Group, User } from "@microsoft/microsoft-graph-types";
 
 /**
  * Implementation of the Classes content page
@@ -14,12 +14,11 @@ import { User } from "@microsoft/microsoft-graph-types";
 export const ClassesTab = () => {
 
     const [{ inTeams, theme, context }] = useTeams();
-    const [entityId, setEntityId] = useState<string | undefined>();
-    const [name, setName] = useState<string>();
     const [consentUrl, setConsentUrl] = useState<string>();
     const [user, setUser] = useState<User>();
     const [error, setError] = useState<string>();
-    const [allGroups, setAllGroups] = useState<any[]>();
+    const [nextPageUrl, setNextPageUrl] = useState<string | null>();
+    const [allGroups, setAllGroups] = useState<Group[]>([]);
     const [messages, setMessages] = useState<Array<string>>();
 
     const [ssoToken, setSsoToken] = useState<string>();
@@ -30,7 +29,6 @@ export const ClassesTab = () => {
             microsoftTeams.authentication.getAuthToken({
                 successCallback: (token: string) => {
                     const decoded: { [key: string]: any; } = jwtDecode(token) as { [key: string]: any; };
-                    setName(decoded!.name);
 
                     setSsoToken(token);
 
@@ -58,15 +56,13 @@ export const ClassesTab = () => {
             setMessages(new Array<string>());
 
             setConsentUrl(c);
-        } else {
-            setEntityId("Not in Microsoft Teams");
         }
     }, [inTeams]);
 
     const loadUserData = useCallback(async () => {
         if (!msGraphOboToken) { return; }
 
-        // Load user data
+        // Load groups user is in - https://docs.microsoft.com/en-us/graph/api/group-list?view=graph-rest-1.0
         const endpoint = `https://graph.microsoft.com/v1.0/me/`;
         const requestObject = {
             method: 'GET',
@@ -98,13 +94,9 @@ export const ClassesTab = () => {
 
     }, [msGraphOboToken]);
 
-    const getGroups = useCallback(async () => {
+    const getGroupsForUrl = useCallback(async url => {
         if (!msGraphOboToken) { return; }
 
-        const now = new Date();
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const endpoint = `https://graph.microsoft.com/v1.0/groups`;
         const requestObject = {
             method: 'GET',
             headers: {
@@ -112,27 +104,41 @@ export const ClassesTab = () => {
             }
         };
 
-        await fetch(endpoint, requestObject)
+        await fetch(url, requestObject)
             .then(async response => {
                 if (response.ok) {
 
                     const responsePayload = await response.json();
+                    const nextPageUrl : string = responsePayload["@odata.nextLink"];
+                    if (nextPageUrl)
+                    {
+                        setNextPageUrl(nextPageUrl);
+                    }
+                    else 
+                        setNextPageUrl(null);
 
-                    console.info("Found groups:");
-                    console.info(responsePayload.value);
-                    setAllGroups(responsePayload.value);
+                    setAllGroups(oldGroups => oldGroups.concat(responsePayload.value));
                 }
                 else {
                     alert(`Got response ${response.status} from Graph. Check permissions?`);
                 }
             })
             .catch(error => {
-                alert('Error loading from Graph: ' + error.error.response.data.error);
+                alert('Error loading from Graph: ' + error.error?.response?.data?.error);
             });
 
 
     }, [msGraphOboToken]);
 
+    const getGroups = useCallback(async () => {
+        if (!msGraphOboToken) { return; }
+
+        // Use beta endpoint so we can filter on groups with Teams only
+        const endpoint = `https://graph.microsoft.com/beta/groups?$filter=resourceProvisioningOptions/Any(x:x eq 'Team')&$select=id,displayName`;
+        
+        await getGroupsForUrl(endpoint);
+
+    }, [msGraphOboToken]);
     useEffect(() => {
         loadUserData();
     }, [msGraphOboToken]);
@@ -158,11 +164,6 @@ export const ClassesTab = () => {
         }
     }, [exchangeSsoTokenForOboToken, ssoToken]);
 
-    useEffect(() => {
-        if (context) {
-            setEntityId(context.entityId);
-        }
-    }, [context]);
 
     const [ignored, forceUpdate] = React.useReducer(x => x + 1, 0);
 
@@ -188,12 +189,14 @@ export const ClassesTab = () => {
                 </Flex.Item>
                 <Flex.Item>
                     <div>
+                        
+                        {messages &&
+                            <MessagesList messages={messages} />
+                        }
                         <div>
                             {allGroups &&
                                 <div>
-                                    <h3>Groups:</h3>
                                     <GroupsList listData={allGroups} graphToken={msGraphOboToken} graphMeetingUser={user!} log={logMessage} />
-                                    <Button onClick={() => getGroups()}>Refresh</Button>
                                 </div>
                             }
                         </div>
@@ -208,8 +211,8 @@ export const ClassesTab = () => {
                                     : null}
                             </div>
                         }
-                        {messages &&
-                            <MessagesList messages={messages} />
+                        {nextPageUrl &&
+                            <p><Button content="Load next page" tinted onClick={() => getGroupsForUrl(nextPageUrl)}></Button></p>
                         }
                     </div>
                 </Flex.Item>
