@@ -11,7 +11,7 @@ export default class MessagesList extends React.Component<MessageListData>
 
 
         return <div>
-            <p>Logs:</p>
+            <p>API Logs:</p>
             {this.props.messages.map((message, i) =>
                 <div>
                     <p>{message}</p>

@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useTeams } from "msteams-react-base-component";
 import * as microsoftTeams from "@microsoft/teams-js";
 import jwtDecode from "jwt-decode";
-import MessagesList from './MessagesList';
-import GroupsList from './GroupsList';
+import MessagesList from "./MessagesList";
+import GroupsList from "./GroupsList";
 import { Group, User } from "@microsoft/microsoft-graph-types";
+import NewClass from "./NewClass";
 
 /**
  * Implementation of the Classes content page
@@ -19,6 +20,7 @@ export const ClassesTab = () => {
     const [error, setError] = useState<string>();
     const [nextPageUrl, setNextPageUrl] = useState<string | null>();
     const [allGroups, setAllGroups] = useState<Group[]>([]);
+    const [selectedGroup, setSelectedGroup] = useState<Group | null>();
     const [messages, setMessages] = useState<Array<string>>();
 
     const [ssoToken, setSsoToken] = useState<string>();
@@ -65,9 +67,9 @@ export const ClassesTab = () => {
         // Load groups user is in - https://docs.microsoft.com/en-us/graph/api/group-list?view=graph-rest-1.0
         const endpoint = `https://graph.microsoft.com/v1.0/me/`;
         const requestObject = {
-            method: 'GET',
+            method: "GET",
             headers: {
-                "authorization": "bearer " + msGraphOboToken
+                authorization: "bearer " + msGraphOboToken
             }
         };
 
@@ -98,9 +100,9 @@ export const ClassesTab = () => {
         if (!msGraphOboToken) { return; }
 
         const requestObject = {
-            method: 'GET',
+            method: "GET",
             headers: {
-                "authorization": "bearer " + msGraphOboToken
+                authorization: "bearer " + msGraphOboToken
             }
         };
 
@@ -109,14 +111,14 @@ export const ClassesTab = () => {
                 if (response.ok) {
 
                     const responsePayload = await response.json();
-                    const nextPageUrl : string = responsePayload["@odata.nextLink"];
-                    if (nextPageUrl)
-                    {
+                    const nextPageUrl: string = responsePayload["@odata.nextLink"];
+                    if (nextPageUrl) {
                         setNextPageUrl(nextPageUrl);
                     }
-                    else 
+                    else
                         setNextPageUrl(null);
 
+                    // Append groups
                     setAllGroups(oldGroups => oldGroups.concat(responsePayload.value));
                 }
                 else {
@@ -124,7 +126,7 @@ export const ClassesTab = () => {
                 }
             })
             .catch(error => {
-                alert('Error loading from Graph: ' + error.error?.response?.data?.error);
+                alert("Error loading from Graph: " + error.error?.response?.data?.error);
             });
 
 
@@ -135,7 +137,7 @@ export const ClassesTab = () => {
 
         // Use beta endpoint so we can filter on groups with Teams only
         const endpoint = `https://graph.microsoft.com/beta/groups?$filter=resourceProvisioningOptions/Any(x:x eq 'Team')&$select=id,displayName`;
-        
+
         await getGroupsForUrl(endpoint);
 
     }, [msGraphOboToken]);
@@ -150,7 +152,7 @@ export const ClassesTab = () => {
             setMsGraphOboToken(responsePayload.access_token);
         } else {
             if (responsePayload!.error === "consent_required") {
-                setError(`consent_required`);
+                setError("consent_required");
             } else {
                 setError("unknown SSO error");
             }
@@ -172,12 +174,17 @@ export const ClassesTab = () => {
             setMessages(new Array<string>());
 
         console.log(log);
-        messages?.push(log);
+        setMessages(oldLogs => oldLogs?.concat(log));
 
         // Force render
         forceUpdate(1);
     });
-
+    const newMeeting = ((group: Group) => {
+        setSelectedGroup(group);
+    });
+    const cancelNewMeeting = (() => {
+        setSelectedGroup(null);
+    });
 
     return (
         <Provider theme={theme}>
@@ -189,31 +196,49 @@ export const ClassesTab = () => {
                 </Flex.Item>
                 <Flex.Item>
                     <div>
-                        
+
                         {messages &&
                             <MessagesList messages={messages} />
                         }
-                        <div>
-                            {allGroups &&
+                        {selectedGroup 
+                        ?   (
                                 <div>
-                                    <GroupsList listData={allGroups} graphToken={msGraphOboToken} graphMeetingUser={user!} log={logMessage} />
+                                    <NewClass graphToken={msGraphOboToken} selectedGroup={selectedGroup}
+                                        graphMeetingUser={user!} log={logMessage} cancelNewMeeting={cancelNewMeeting} />
                                 </div>
+                            )
+                            :
+                            (
+                                <div>
+                                    {allGroups &&
+                                        <div>
+                                            <GroupsList listData={allGroups} graphToken={msGraphOboToken}
+                                                graphMeetingUser={user!} log={logMessage}
+                                                newMeeting={newMeeting} />
+                                        </div>
+                                    }
+                                </div>
+                            )
+
+                        }
+                        <div>
+
+                            {nextPageUrl &&
+                                <p><Button content="Load next page" tinted onClick={() => getGroupsForUrl(nextPageUrl)}></Button></p>
                             }
                         </div>
                         {error &&
                             <div>
                                 <div><Text content={`An SSO error occurred ${error}`} /></div>
-                                {error == 'consent_required' ?
+                                {error === "consent_required" ?
                                     <div>
                                         <p>You need to grant this application the right permissions to your data.</p>
-                                        <a href={consentUrl} target="_blank">Grant access (new window)</a>
+                                        <a href={consentUrl} target="_blank">Grant access to the right permissions and retry (new window)</a>
                                     </div>
                                     : null}
                             </div>
                         }
-                        {nextPageUrl &&
-                            <p><Button content="Load next page" tinted onClick={() => getGroupsForUrl(nextPageUrl)}></Button></p>
-                        }
+
                     </div>
                 </Flex.Item>
                 <Flex.Item styles={{
