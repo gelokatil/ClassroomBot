@@ -11,13 +11,14 @@ type NewClassProps = {
 }
 type NewClassState = {
     newMeetingName: string,
-    currentMeeting: OnlineMeeting | null
+    currentMeeting: OnlineMeeting | null,
+    loading: boolean
 }
 
 export default class NewClass extends React.Component<NewClassProps, NewClassState> {
     constructor(props) {
         super(props);
-        this.state = { newMeetingName: "", currentMeeting: null };
+        this.state = { newMeetingName: "", currentMeeting: null, loading: false };
     }
 
     handleNewMeetingNameChange(event) {
@@ -25,19 +26,21 @@ export default class NewClass extends React.Component<NewClassProps, NewClassSta
     }
 
     render() {
-
+        const title : string = `New Online Meeting in '${this.props.selectedGroup?.displayName}'`;
         return <div>
-            <Header as="h1" content={this.props.selectedGroup?.displayName} />
-
+            <Header as="h3" content={title} />
+            <p>Enter meeting details below.</p>
             <Input
                 label="Meeting subject"
                 required
                 value={this.state.newMeetingName} onChange={e => this.handleNewMeetingNameChange(e)}
             />
             <div>
-                <Button primary onClick={() => this.startMeeting(this.props.selectedGroup!)}>Start New Class</Button>
-                <Button onClick={async () => this.joinLastClass()} secondary
-                    disabled={this.state.currentMeeting !== null}>Join Last Class</Button>
+                <Button primary onClick={() => this.startMeeting(this.props.selectedGroup!)} 
+                    disabled={this.state.loading}>Start New Class</Button>
+                    {this.state.currentMeeting &&
+                        <Button onClick={async () => this.joinLastClass()} secondary>Join Created Meeting</Button>
+                    }
                 <Button onClick={async () => this.props.cancelNewMeeting()} secondary>Cancel</Button>
             </div>
         </div>;
@@ -52,19 +55,23 @@ export default class NewClass extends React.Component<NewClassProps, NewClassSta
     }
 
     async startMeeting(group: Group) {
+
+        // Create new meeting with form values
         this.createNewMeeting(group)
             .then(async newMeeting => {
 
+                // Post meeting details
                 const channelId = await this.getDefaultChannelId(group);
-
                 this.postMeetingToGroup(group, newMeeting, channelId)
                     .then(async () => {
+                        
+                        // Remember meeting in state
+                        this.setState({ currentMeeting: newMeeting });
 
                         // Join bot
                         await this.joinBotToCall(newMeeting.joinWebUrl!)
                             .then(async () => {
 
-                                this.setState({ currentMeeting: newMeeting });
 
                                 this.props.log("All done. Opening meeting in new tab");
                                 this.joinLastClass();
@@ -78,7 +85,7 @@ export default class NewClass extends React.Component<NewClassProps, NewClassSta
 
     async getGroupDirectoryObjects(group: Group): Promise<Array<DirectoryObject>> {
 
-        this.props.log("Getting general channel ID...");
+        this.props.log("Getting group members...");
 
         // https://docs.microsoft.com/en-us/graph/api/group-list-members
         const endpoint = `https://graph.microsoft.com/v1.0/groups/${group.id}/members`;
@@ -123,17 +130,16 @@ export default class NewClass extends React.Component<NewClassProps, NewClassSta
 
     async getDefaultChannelId(group: Group): Promise<string> {
 
-        this.props.log("Getting default channel ID...", true);
+        this.props.log("Getting default channel ID...");
 
+        // https://docs.microsoft.com/en-us/graph/api/team-get-primarychannel
         const endpoint = `https://graph.microsoft.com/v1.0/teams/${group.id}/primaryChannel`;
         const requestObject = {
             method: "GET",
             headers: {
-                method: "POST",
                 authorization: "bearer " + this.props.graphToken
             }
         };
-
 
         const response = await fetch(endpoint, requestObject);
         const responsePayload : Channel = await response.json();
@@ -178,7 +184,7 @@ export default class NewClass extends React.Component<NewClassProps, NewClassSta
         const requestObject = {
             method: "POST",
             headers: {
-                method: "POST",
+                "Content-Type": "application/json",
                 authorization: "bearer " + this.props.graphToken
             },
             body: JSON.stringify(data)
@@ -234,31 +240,27 @@ export default class NewClass extends React.Component<NewClassProps, NewClassSta
             });
         }
 
-
         let data: any = {
-            "body": {
-                "contentType": "html",
-                "content": `<div>${meeting.subject} - <a href="${meeting.joinWebUrl}">join class now</a></div>
+            body: {
+                contentType: "html",
+                content: `<div>${meeting.subject} - <a href="${meeting.joinWebUrl}">join class now</a></div>
                             <div>${membersHtml}</div>`
             },
-            "mentions": mentions
+            mentions: mentions
         };
 
         // https://docs.microsoft.com/en-us/graph/api/channel-post-messages
         const endpoint = `https://graph.microsoft.com/v1.0/teams/${group.id}/channels/${channelId}/messages`;
         const requestObject = {
-            method: 'POST',
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
-                "authorization": "bearer " + this.props.graphToken
+                "Content-Type": "application/json",
+                authorization: "bearer " + this.props.graphToken
             },
             body: JSON.stringify(data)
         };
 
-
         const response = await fetch(endpoint, requestObject);
-
-
         if (response.ok) {
 
             const responsePayload = await response.json();
@@ -270,6 +272,7 @@ export default class NewClass extends React.Component<NewClassProps, NewClassSta
             return Promise.reject(`Got response ${response.status} from Graph. Check permissions?`);
         }
     }
+
     async joinBotToCall(joinUrl: string) {
         const data =
         {
@@ -277,11 +280,12 @@ export default class NewClass extends React.Component<NewClassProps, NewClassSta
             DisplayName: "ClassroomBot"
         };
 
+        // Call our own bot URL to have it join our meeting
         const endpoint = `https://${process.env.BOT_HOSTNAME}/joinCall`;
         const requestObject = {
             method: "POST",
             headers: {
-                method: "POST"
+                "Content-Type": "application/json"
             },
             body: JSON.stringify(data)
         };

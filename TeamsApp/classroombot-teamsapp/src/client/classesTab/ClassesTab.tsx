@@ -113,11 +113,14 @@ export const ClassesTab = () => {
                     const responsePayload = await response.json();
                     const nextPageUrl: string = responsePayload["@odata.nextLink"];
                     if (nextPageUrl) {
+                        logMessage("Loaded groups - more results in next page", false);
                         setNextPageUrl(nextPageUrl);
                     }
                     else
+                    {
+                        logMessage("Loaded groups", false);
                         setNextPageUrl(null);
-
+                    }
                     // Append groups
                     setAllGroups(oldGroups => oldGroups.concat(responsePayload.value));
                 }
@@ -171,10 +174,20 @@ export const ClassesTab = () => {
 
     const logMessage = ((log: string, clearPrevious: boolean) => {
         if (clearPrevious !== undefined && clearPrevious === true)
-            setMessages(new Array<string>());
+            setMessages(oldLogs => 
+                {
+                    oldLogs = [];
+                    oldLogs.push(log);
+                    return oldLogs;
+                });
+        else
+            setMessages(oldLogs => 
+            {
+                oldLogs?.push(log);
+                return oldLogs;
+            });
 
         console.log(log);
-        setMessages(oldLogs => oldLogs?.concat(log));
 
         // Force render
         forceUpdate(1);
@@ -195,8 +208,10 @@ export const ClassesTab = () => {
                     <Header content="Start a class meeting with the ClassroomBot" />
                 </Flex.Item>
                 <Flex.Item>
+                    <p>Create meetings with ClassroomBot added too, in a selected Team.</p>
+                </Flex.Item>
+                <Flex.Item>
                     <div>
-
                         {messages &&
                             <MessagesList messages={messages} />
                         }
@@ -217,16 +232,14 @@ export const ClassesTab = () => {
                                                 newMeeting={newMeeting} />
                                         </div>
                                     }
+                                    <div>
+                                        {nextPageUrl &&
+                                            <p><Button content="Load next page" tinted onClick={() => getGroupsForUrl(nextPageUrl)}></Button></p>
+                                        }
+                                    </div>
                                 </div>
                             )
-
                         }
-                        <div>
-
-                            {nextPageUrl &&
-                                <p><Button content="Load next page" tinted onClick={() => getGroupsForUrl(nextPageUrl)}></Button></p>
-                            }
-                        </div>
                         {error &&
                             <div>
                                 <div><Text content={`An SSO error occurred ${error}`} /></div>
@@ -238,7 +251,6 @@ export const ClassesTab = () => {
                                     : null}
                             </div>
                         }
-
                     </div>
                 </Flex.Item>
                 <Flex.Item styles={{
