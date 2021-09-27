@@ -15,3 +15,4 @@ tls.crt
 tls.key
 .vs/slnx.sqlite
 .vs/VSWorkspaceState.json
+.vscode/launch.json
