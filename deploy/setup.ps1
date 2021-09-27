@@ -1,14 +1,21 @@
-# Helping variables
-$azureLocation = "westeurope"
-$resourceGroupName = "EducationBot"     # Where to create AKS and where the public IP is created
-$publicIpName = "AksIpStandard"         # Name of IP address
-$botDomain = "classroombot.teamsplatform.app"
-$acrName = "classroombotregistry"
-$AKSClusterName = "ClassroomCluster"
-$applicationId = "151d9460-b018-4904-8f81-14203ac3cb4f"
-$applicationSecret = "9p96lolQJSD~TVf~4~d9G~YevDdGlt_Anp"
-$botName = "ClassroomBotProd"
-$containerTag = "1.0.5"
+
+Param(
+    $azureLocation = "westeurope",                      # Azure region 
+    $resourceGroupName = "ClassroomBotProd",            # Where to create AKS and where the public IP is created
+    $publicIpName = "AksIpStandard",                    # Name of IP address
+    $botDomain = "",                                    # Bot DNS
+    $acrName = "",                                      # Container registry name (not FQDN)
+    $AKSClusterName = "ClassroomCluster",               # AKS resource name to use/create
+    $applicationId = "",                                # Bot appID
+    $applicationSecret = "",                            # Bot secret
+    $botName = "",                                      # Bot service name, e.g 'ClassroomBotProd'
+    $containerTag = "latest"
+)
+
+if ($azureLocation -eq "" -or $resourceGroupName -eq "" -or $publicIpName -eq "" -or $botDomain -eq "" -or $acrName -eq "" -or $AKSClusterName -eq "" -or $applicationId -eq "" -or $applicationSecret -eq ""  -or $botName -eq "" -or $containerTag -eq "") {
+    Write-Host "Missing parameters - please check & run again" -ForegroundColor Red
+    exit
+}
 
 # Init script
 $AKSmgResourceGroup = "MC_"+$resourceGroupName+"_"+"$AKSClusterName"+"_"+$azureLocation
@@ -20,13 +27,13 @@ Write-Host "About to create resource group: $resourceGroupName" -ForegroundColor
 az group create -l $azureLocation -n $resourceGroupName
 
 # Create the AKS Cluster
-Write-Host "About to create AKS cluster: $resourceGroupName" -ForegroundColor Yellow
-az aks create --resource-group $resourceGroupName --name $AKSClusterName --node-count 1 --enable-addons monitoring --generate-ssh-keys --windows-admin-password $PASSWORD_WIN --windows-admin-username azureuser --vm-set-type VirtualMachineScaleSets --network-plugin azure #--service-principal $env:SP_ID --client-secret $env:SP_SECRET
+Write-Host "About to create AKS cluster: $AKSClusterName in $resourceGroupName" -ForegroundColor Yellow
+az aks create --resource-group $resourceGroupName --name $AKSClusterName --node-count 1 --enable-addons monitoring --generate-ssh-keys --windows-admin-password $PASSWORD_WIN --windows-admin-username azureuser --vm-set-type VirtualMachineScaleSets --network-plugin azure 
 
 # Add the Windows Node pool
 # TODO: remove this password and make better
 $PASSWORD_WIN="AbcABC123!@#123456"
-Write-Host "About to create AKS Windows node-pool in $AKSClusterName" -ForegroundColor Yellow
+Write-Host "About to create AKS Windows node-pool in $AKSClusterName. This will error if it's already been created, and that's ok..." -ForegroundColor Yellow
 az aks nodepool add --resource-group $resourceGroupName --cluster-name $AKSClusterName --os-type Windows --name scale --node-count 1 --node-vm-size Standard_DS3_v2
 
 # Get IP address from Azure Public IP address pre-created
@@ -57,7 +64,8 @@ if ($publicIpAddress -eq $dnsResult.IP4Address) {
     Write-Host "Verified DNS name $botDomain has valid A-record for IP address $publicIpAddress" -ForegroundColor Green
 }
 else {
-    Write-Host "Fatal: DNS name $botDomain has A-record for IP address $dnsResult.IP4Address and not our IP address $publicIpAddress" -ForegroundColor Red
+    $tmpWrongIp = $dnsResult.IP4Address
+    Write-Host "Fatal: DNS name '$botDomain' has A-record for IP address '$tmpWrongIp', and *not* our IP address $publicIpAddress. This will break the SSL manager - aborting." -ForegroundColor Red
     exit
 }
 
@@ -143,3 +151,4 @@ else
     Write-Output "try manually executing: 'kubectl get cert -n classroombot' in a few minutes."
     exit -1    
 }
+
