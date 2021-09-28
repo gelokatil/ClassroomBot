@@ -138,7 +138,7 @@ Write-Host "Setting up helm for classroombot for bot domain: $botDomain and Publ
 helm install classroombot ./deploy/classroombot --namespace classroombot --create-namespace --set host=$botDomain --set public.ip=$publicIpAddress --set image.domain="$acrName.azurecr.io" --set image.tag=$containerTag
 
 # Validate certificate, wait a minute or two
-Write-Output "Sleeping for 5 mins before running validation..." -ForegroundColor Yellow
+Write-Host "Sleeping for 5 mins before running validation..." -ForegroundColor Yellow
 Start-Sleep -Seconds 300
 $certValidation = kubectl get cert -n classroombot
 if ($certValidation -like '*True*') 
