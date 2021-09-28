@@ -1,4 +1,5 @@
 # ClassroomBot for Kubernetes Setup
+This is a setup guide for this project.
 
 # Requirements
 
@@ -102,8 +103,3 @@ Grant-CsApplicationAccessPolicy -PolicyName Meeting-Update-Policy -Identity &quo
 
 Install the PS module with &quot;Install-Module -Name MicrosoftTeams&quot;
 
-# Misc
-
-Get user object ID:
-
-![](RackMultipart20210928-4-1oigql2_html_424e93fa8becc83.png)
