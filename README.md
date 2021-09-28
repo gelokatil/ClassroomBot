@@ -12,7 +12,7 @@ It&#39;s designed to run either locally via NGrok or in Azure Kubernetes Service
     - SSL certificate for NGrok URL (see below).
     - Visual Studio 2019
 3. **Production deploy** :
-  - Public bot domain (root-level) + DNS control for domain.
+    - Public bot domain (root-level) + DNS control for domain.
 4. Node JS LTS 14 to build Teams manifest.
 5. Docker for Windows to build bot image.
 6. Source code: [https://github.com/sambetts/ClassroomBot](https://github.com/sambetts/ClassroomBot)
@@ -20,6 +20,7 @@ It&#39;s designed to run either locally via NGrok or in Azure Kubernetes Service
     - AccessMedia.All
     - JoinGroupCall.All
     - JoinGroupCallAsGuest.All
+    - OnlineMeetings.ReadWrite.All
 
 # Required Configuration Information
 
