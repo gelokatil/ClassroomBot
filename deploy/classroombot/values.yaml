@@ -39,9 +39,6 @@ container:
       captureEvents: false
       eventsFolder: events
       mediaFolder: archive
-      eventhubKey: ""
-      eventhubName: recordingbotevents
-      eventhubRegion: ""
       isStereo: false
       wavSampleRate: 0 # when it is 0, the default sample rate will be set per the stereo flag setting above
       wavQuality: 100

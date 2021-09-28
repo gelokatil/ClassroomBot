@@ -1,18 +1,5 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
 
-// Last Modified On : 09-03-2020
-// ***********************************************************************
-// <copyright file="DemoController.cs" company="Microsoft Corporation">
-//     Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT license.
-// </copyright>
-// <summary>ScreenshotsController retrieves the screenshots stored by the bot</summary>
-// ***********************************************************************-
-
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph.Communications.Common.Telemetry;
 using Microsoft.Graph.Communications.Core.Serialization;
@@ -47,10 +34,6 @@ namespace RecordingBot.Services.Http.Controllers
         /// The settings
         /// </summary>
         private readonly AzureSettings _settings;
-        /// <summary>
-        /// The event publisher
-        /// </summary>
-        private readonly IEventPublisher _eventPublisher;
 
 
         /// <summary>
@@ -60,7 +43,6 @@ namespace RecordingBot.Services.Http.Controllers
         public DemoController()
         {
             _logger = AppHost.AppHostInstance.Resolve<IGraphLogger>();
-            _eventPublisher = AppHost.AppHostInstance.Resolve<IEventPublisher>();
             _botService = AppHost.AppHostInstance.Resolve<IBotService>();
             _settings = AppHost.AppHostInstance.Resolve<IOptions<AzureSettings>>().Value;
         }
@@ -73,8 +55,7 @@ namespace RecordingBot.Services.Http.Controllers
         [Route(HttpRouteConstants.Calls + "/")]
         public HttpResponseMessage OnGetCalls()
         {
-            _logger.Info("Getting calls");
-            _eventPublisher.Publish("GetCalls", "Getting calls");
+            _logger.Info($"{nameof(OnGetCalls)} - Getting calls");
 
             if (_botService.CallHandlers.IsEmpty)
             {
@@ -113,9 +94,7 @@ namespace RecordingBot.Services.Http.Controllers
         [Route(HttpRouteConstants.CallRoute)]
         public async Task<HttpResponseMessage> OnEndCallAsync(string callLegId)
         {
-            var message = $"Ending call {callLegId}";
-            _logger.Info(message);
-            _eventPublisher.Publish("EndingCall", message);
+            _logger.Info($"{nameof(OnEndCallAsync)} Ending call {callLegId}");
             
             try
             {

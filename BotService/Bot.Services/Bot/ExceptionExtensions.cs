@@ -1,17 +1,3 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
-
-// Last Modified On : 08-17-2020
-// ***********************************************************************
-// <copyright file="ExceptionExtensions.cs" company="Microsoft Corporation">
-//     Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT license.
-// </copyright>
-// <summary>Helper class to handle exceptions</summary>
-// ***********************************************************************-
 
 using Microsoft.Graph;
 using Microsoft.Graph.Communications.Common.Telemetry;

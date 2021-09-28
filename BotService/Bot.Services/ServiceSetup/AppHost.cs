@@ -1,23 +1,15 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
 
-// Last Modified On : 09-07-2020
-// ***********************************************************************
-// <copyright file="AppHost.cs" company="Microsoft">
-//     Copyright ©  2020
-// </copyright>
-// <summary></summary>
-// ***********************************************************************
+using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph.Communications.Common.Telemetry;
 using Microsoft.Owin.Hosting;
+using RecordingBot.Services.Bot;
 using RecordingBot.Services.Contract;
 using RecordingBot.Services.Http;
+using RecordingBot.Services.Util;
 using System;
 using System.IO;
 
@@ -60,7 +52,10 @@ namespace RecordingBot.Services.ServiceSetup
         /// <summary>
         /// The logger
         /// </summary>
-        private IGraphLogger _logger;
+        private IGraphLogger _graphLogger;
+
+        private TelemetryClient _appInsights;
+        private IDisposable _logSub;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AppHost" /> class.
@@ -76,7 +71,7 @@ namespace RecordingBot.Services.ServiceSetup
         /// </summary>
         public void Boot()
         {
-            DotNetEnv.Env.Load(new DotNetEnv.Env.LoadOptions(parseVariables: false));
+            DotNetEnv.Env.Load();
 
             var builder = new ConfigurationBuilder();
 
@@ -92,20 +87,18 @@ namespace RecordingBot.Services.ServiceSetup
 
             ServiceProvider = ServiceCollection.BuildServiceProvider();
 
-            _logger = Resolve<IGraphLogger>();
+            // Add logging to Application Insights
+            _appInsights = ServiceProvider.GetRequiredService<TelemetryClient>();
 
-            try
-            {
-                _settings = Resolve<IOptions<AzureSettings>>().Value;
-                _settings.Initialize();
-                Resolve<IEventPublisher>();
-                _botService = Resolve<IBotService>();
-            }
-            catch (Exception e)
-            {
-                _logger.Error(e, "Unhandled exception in Boot()");
-            }
+            _graphLogger = Resolve<IGraphLogger>();
 
+
+            var logger = new AppInsightsGraphLogger(_appInsights);
+            _logSub = this._graphLogger.Subscribe(logger);
+
+            _settings = Resolve<IOptions<AzureSettings>>().Value;
+            _settings.Initialize();
+            _botService = Resolve<IBotService>();
         }
 
         /// <summary>
@@ -120,14 +113,14 @@ namespace RecordingBot.Services.ServiceSetup
                 var callStartOptions = new StartOptions();
 
                 var settings = (AzureSettings)_settings;
+
                 var rootPath = Path.Combine(Environment.CurrentDirectory, "wwwroot");
                 settings.BaseContentDir = rootPath;
 
                 foreach (var url in settings.CallControlListeningUrls)
                 {
                     callStartOptions.Urls.Add(url);
-                    Console.WriteLine(url);
-                    _logger.Info("Listening on: {url}", url);
+                    _graphLogger.Info($"Listening on: {url}");
                 }
 
                 _callHttpServer = WebApp.Start(
@@ -135,14 +128,14 @@ namespace RecordingBot.Services.ServiceSetup
                     (appBuilder) =>
                     {
                         var startup = new HttpConfigurationInitializer();
-                        startup.ConfigureSettings(appBuilder, _logger, settings);
+                        startup.ConfigureSettings(appBuilder, _graphLogger, settings);
                     });
 
-                Console.WriteLine($"Root HTTP dir is {settings.BaseContentDir}");
+                _graphLogger.Info($"Root HTTP dir is {settings.BaseContentDir}");
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                _logger.Error(e, "Unhandled exception in StartServer()");
+                _graphLogger.Error(ex, $"Unhandled exception in {nameof(StartServer)}");
                 throw;
             }
         }

@@ -1,17 +1,5 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
 
-// Last Modified On : 09-07-2020
-// ***********************************************************************
-// <copyright file="PlatformCallController.cs" company="Microsoft">
-//     Copyright ©  2020
-// </copyright>
-// <summary></summary>
-// ***********************************************************************>
-
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Communications.Client;
 using Microsoft.Graph.Communications.Client.Authentication;
@@ -22,7 +10,6 @@ using Microsoft.Graph.Communications.Core.Notifications;
 using RecordingBot.Model.Constants;
 using RecordingBot.Services.Contract;
 using RecordingBot.Services.ServiceSetup;
-using RecordingBot.Services.Util;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -50,10 +37,6 @@ namespace RecordingBot.Services.Http.Controllers
         /// The logger
         /// </summary>
         private readonly IGraphLogger _logger;
-        /// <summary>
-        /// The event publisher
-        /// </summary>
-        private readonly IEventPublisher _eventPublisher;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PlatformCallController" /> class.
@@ -63,7 +46,6 @@ namespace RecordingBot.Services.Http.Controllers
         {
             _botService = AppHost.AppHostInstance.Resolve<IBotService>();
             _logger = AppHost.AppHostInstance.Resolve<IGraphLogger>();
-            _eventPublisher = AppHost.AppHostInstance.Resolve<IEventPublisher>();
         }
 
         /// <summary>
@@ -76,7 +58,6 @@ namespace RecordingBot.Services.Http.Controllers
         {
             var log = $"Received HTTP {this.Request.Method}, {this.Request.RequestUri}";
             _logger.Info(log);
-            _eventPublisher.Publish($"IncomingHTTP{this.Request.Method}", $"{this.Request.RequestUri}");
 
             // Instead of passing incoming notification to SDK, let's process it ourselves
             // so we can handle any policy evaluations.
@@ -98,16 +79,6 @@ namespace RecordingBot.Services.Http.Controllers
         {
             var log = $"Received HTTP {this.Request.Method}, {this.Request.RequestUri}";
             _logger.Info(log);
-
-            _eventPublisher.Publish($"NotificationHTTP{this.Request.Method}",  $"{this.Request.RequestUri}");
-
-            //var content = await Request.Content.ReadAsStringAsync();
-            //if (content.Contains("0#10550"))
-            //{
-            //    var callHandler = _botService.CallHandlers.First().Value;
-            //    var bms = callHandler.BotMediaStream;
-            //    bms.GetAudioQualityOfExperienceData();
-            //}
 
             // Pass the incoming notification to the sdk. The sdk takes care of what to do with it.
             var response = await _botService.Client.ProcessNotificationAsync(this.Request).ConfigureAwait(false);

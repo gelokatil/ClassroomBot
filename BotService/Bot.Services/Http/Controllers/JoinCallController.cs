@@ -1,16 +1,5 @@
-﻿// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
-
-// Last Modified On : 09-03-2020
-// ***********************************************************************
-// <copyright file="JoinCallController.cs" company="Microsoft">
-//     Copyright ©  2020
-// </copyright>
-// <summary></summary>
-// ***********************************************************************
+﻿
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Microsoft.Graph.Communications.Common.Telemetry;
@@ -45,10 +34,7 @@ namespace RecordingBot.Services.Http.Controllers
         /// The settings
         /// </summary>
         private readonly AzureSettings _settings;
-        /// <summary>
-        /// The event publisher
-        /// </summary>
-        private readonly IEventPublisher _eventPublisher;
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JoinCallController" /> class.
@@ -57,7 +43,6 @@ namespace RecordingBot.Services.Http.Controllers
         public JoinCallController()
         {
             _logger = AppHost.AppHostInstance.Resolve<IGraphLogger>();
-            _eventPublisher = AppHost.AppHostInstance.Resolve<IEventPublisher>();
             _botService = AppHost.AppHostInstance.Resolve<IBotService>();
             _settings = AppHost.AppHostInstance.Resolve<IOptions<AzureSettings>>().Value;
         }
@@ -70,12 +55,11 @@ namespace RecordingBot.Services.Http.Controllers
         /// <param name="eventPublisher">The event publisher.</param>
         /// <param name="botService">The bot service.</param>
         /// <param name="settings">The settings.</param>
-        public JoinCallController(IGraphLogger logger, IEventPublisher eventPublisher, IBotService botService, IAzureSettings settings)
+        public JoinCallController(IGraphLogger logger, ILogger eventPublisher, IBotService botService, IAzureSettings settings)
         {
             _logger = logger;
             _botService = botService;
             _settings = (AzureSettings)settings;
-            _eventPublisher = eventPublisher;
         }
 
         /// <summary>
@@ -92,7 +76,7 @@ namespace RecordingBot.Services.Http.Controllers
                 var call = await _botService.JoinCallAsync(joinCallBody).ConfigureAwait(false);
                 var callPath = $"/{HttpRouteConstants.CallRoute.Replace("{callLegId}", call.Id)}";
                 var callUri = $"{_settings.ServiceCname}{callPath}";
-                _eventPublisher.Publish("JoinCall", $"Call.id = {call.Id}");
+                _logger.Info($"{nameof(JoinCallAsync)} - Call.id = {call.Id}");
 
                 var values = new JoinURLResponse()
                 {

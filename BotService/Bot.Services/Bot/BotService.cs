@@ -1,16 +1,5 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
 
-// Last Modified On : 09-03-2020
-// ***********************************************************************
-// <copyright file="BotService.cs" company="Microsoft">
-//     Copyright ©  2020
-// </copyright>
-// <summary></summary>
-// ***********************************************************************
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Communications.Calls;
 using Microsoft.Graph.Communications.Calls.Media;
@@ -43,10 +32,7 @@ namespace RecordingBot.Services.Bot
         /// The logger
         /// </summary>
         private readonly IGraphLogger _logger;
-        /// <summary>
-        /// The event publisher
-        /// </summary>
-        private readonly IEventPublisher _eventPublisher;
+
         /// <summary>
         /// The settings
         /// </summary>
@@ -81,13 +67,12 @@ namespace RecordingBot.Services.Bot
         /// <param name="settings">The settings.</param>
         public BotService(
             IGraphLogger logger,
-            IEventPublisher eventPublisher,
+            ILogger<BotService> eventPublisher,
             IAzureSettings settings
 
         )
         {
             _logger = logger;
-            _eventPublisher = eventPublisher;
             _settings = (AzureSettings)settings;
 
         }
@@ -269,7 +254,7 @@ namespace RecordingBot.Services.Bot
         {
             foreach (var call in args.AddedResources)
             {
-                var callHandler = new CallHandler(call, _settings, _eventPublisher);
+                var callHandler = new CallHandler(call, _settings);
                 this.CallHandlers[call.Id] = callHandler;
             }
 
