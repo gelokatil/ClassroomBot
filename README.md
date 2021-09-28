@@ -56,8 +56,8 @@ Some files aren&#39;t tracked in git, so need creating locally from the template
 - Copy &quot;deploy\cluster-issuer - template.yaml&quot; to &quot;deploy\cluster-issuer.yaml&quot;
   - Edit &quot;cluster-issuer.yaml&quot; and replace &quot;$YOUR\_EMAIL\_HERE&quot; with your own email.
   - This is used for LetsEncrypt and needs to be a proper email address; not a free one (Gmail, Outlook, etc)
-- Copy &quot;TeamsApp\classroombot-teamsapp\template.env&quot; to &quot;TeamsApp\classroombot-teamsapp\.env&quot;
-- Copy &quot;BotService\Bot.Console\template.env&quot; to &quot;BotService\Bot.Console\.env&quot;
+- Copy &quot;TeamsApp\classroombot-teamsapp\template.env&quot; to &quot;TeamsApp\classroombot-teamsapp\\.env&quot;
+- Copy &quot;BotService\Bot.Console\template.env&quot; to &quot;BotService\Bot.Console\\.env&quot;
 
 ## Dev Only: Setup NGrok configuration
 
