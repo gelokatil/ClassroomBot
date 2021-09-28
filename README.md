@@ -95,11 +95,9 @@ Allow App Account to Impersonate User
 
 The application will impersonate a user to update meetings using this method, but this requires setup.
 
-Connect-MicrosoftTeams
-
-New-CsApplicationAccessPolicy -Identity Meeting-Update-Policy -AppIds &quot;$applicationId&quot; -Description &quot;Policy to allow meetings to be updated by a bot&quot;
-
-Grant-CsApplicationAccessPolicy -PolicyName Meeting-Update-Policy -Identity &quot;$userId&quot;
+- Connect-MicrosoftTeams
+- New-CsApplicationAccessPolicy -Identity Meeting-Update-Policy -AppIds &quot;$applicationId&quot; -Description &quot;Policy to allow meetings to be updated by a bot&quot;
+- Grant-CsApplicationAccessPolicy -PolicyName Meeting-Update-Policy -Identity &quot;$userId&quot;
 
 Install the PS module with &quot;Install-Module -Name MicrosoftTeams&quot;
 
