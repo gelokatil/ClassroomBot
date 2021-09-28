@@ -8,9 +8,9 @@ It&#39;s designed to run either locally via NGrok or in Azure Kubernetes Service
 
 1. Azure subscription on same Azure tenant as Office 365/Teams
 2. **Dev deploy only** :
-  - Ngrok with pro licence (auth key needed to allow TCP + HTTP tunnelling).
-  - SSL certificate for NGrok URL (see below).
-  - Visual Studio 2019
+    - Ngrok with pro licence (auth key needed to allow TCP + HTTP tunnelling).
+    - SSL certificate for NGrok URL (see below).
+    - Visual Studio 2019
 3. **Production deploy** :
   - Public bot domain (root-level) + DNS control for domain.
 4. Node JS LTS 14 to build Teams manifest.
