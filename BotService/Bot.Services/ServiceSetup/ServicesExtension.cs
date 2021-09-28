@@ -1,16 +1,4 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
 
-// Last Modified On : 08-17-2020
-// ***********************************************************************
-// <copyright file="ServicesExtension.cs" company="Microsoft">
-//     Copyright ©  2020
-// </copyright>
-// <summary></summary>
-// ***********************************************************************
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RecordingBot.Services.Contract;

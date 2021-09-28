@@ -1,14 +1,4 @@
-﻿// ***********************************************************************
-// Assembly         : RecordingBot.Console
-// Created          : 08-28-2020
-// Last Modified On : 08-28-2020
-// ***********************************************************************
-// <copyright file="Program.cs" company="Microsoft Corporation">
-//      Copyright ©  2020 Microsoft Corporation. All rights reserved.
-//      //    Licensed under the MIT license. under the MIT license.
-// </copyright>
-// <summary></summary>
-// ***********************************************************************
+﻿
 using RecordingBot.Services.ServiceSetup;
 using System;
 using System.Diagnostics;
@@ -41,12 +31,12 @@ namespace RecordingBot.Console
 
             try
             {
-                System.Console.WriteLine("RecordingBot: booting");
+                System.Console.WriteLine("ClassroomBot: booting");
 
                 bot.Boot();
                 bot.StartServer();
 
-                System.Console.WriteLine("RecordingBot: running");
+                System.Console.WriteLine("ClassroomBot: running");
             }
             catch (Exception e)
             {

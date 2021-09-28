@@ -1,19 +1,6 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
 
-// Last Modified On : 09-07-2020
-// ***********************************************************************
-// <copyright file="CallHandler.cs" company="Microsoft">
-//     Copyright ©  2020
-// </copyright>
-// <summary></summary>
-// ***********************************************************************>
-
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
-using Microsoft.Graph.Auth;
 using Microsoft.Graph.Communications.Calls;
 using Microsoft.Graph.Communications.Calls.Media;
 using Microsoft.Graph.Communications.Common.Telemetry;
@@ -54,10 +41,7 @@ namespace RecordingBot.Services.Bot
         /// The settings
         /// </summary>
         private readonly AzureSettings _settings;
-        /// <summary>
-        /// The event publisher
-        /// </summary>
-        private readonly IEventPublisher _eventPublisher;
+
 
         /// <summary>
         /// The capture
@@ -69,7 +53,7 @@ namespace RecordingBot.Services.Bot
         /// </summary>
         private bool _isDisposed = false;
         private readonly Timer statusCheckTimer;
-        private GraphServiceClient _graphApiClient = null;
+
 
         private List<IParticipant> _noKickRetryUserList = new();
 
@@ -84,34 +68,22 @@ namespace RecordingBot.Services.Bot
         /// <param name="eventPublisher">The event publisher.</param>
         public CallHandler(
             ICall statefulCall,
-            IAzureSettings settings,
-            IEventPublisher eventPublisher
+            IAzureSettings settings
         )
             : base(TimeSpan.FromMinutes(10), statefulCall?.GraphLogger)
         {
             _settings = (AzureSettings)settings;
-            _eventPublisher = eventPublisher;
 
             this.Call = statefulCall;
             this.Call.OnUpdated += this.CallOnUpdated;
 
-            this.BotMediaStream = new BotMediaStream(this.Call.GetLocalMediaSession(), this.Call.Id, this.GraphLogger, eventPublisher, _settings);
+            this.BotMediaStream = new BotMediaStream(this.Call.GetLocalMediaSession(), this.Call.Id, this.GraphLogger, _settings);
 
             if (_settings.CaptureEvents)
             {
                 var path = Path.Combine(Path.GetTempPath(), BotConstants.DefaultOutputFolder, _settings.EventsFolder, statefulCall.GetLocalMediaSession().MediaSessionId.ToString(), "participants");
                 _capture = new CaptureEvents(path);
             }
-
-            var confidentialClientApplication = ConfidentialClientApplicationBuilder
-                .Create(_settings.AadAppId)
-                .WithTenantId(_settings.AadTenantId)
-                .WithClientSecret(_settings.AadAppSecret)
-                .Build();
-
-            _graphApiClient = new GraphServiceClient(new ClientCredentialProvider(confidentialClientApplication));
-
-
 
             // Initialize timer to check statuses
             var timer = new Timer(100 * 60); // every 60 seconds
@@ -246,19 +218,18 @@ namespace RecordingBot.Services.Bot
             this.statusCheckTimer.Enabled = false;
 
             // Event - Dispose of the call completed ok
-            _eventPublisher.Publish("CallDisposedOK", $"Call.Id: {this.Call.Id}");
+            GraphLogger.Info($"CallDisposedOK - Call.Id: {this.Call.Id}");
         }
 
-        private void SetRecordingStatus(ICall source, ElapsedEventArgs e)
+        private void SetRecordingStatus(ICall source, RecordingStatus newStatus)
         {
             _ = Task.Run(async () =>
             {
-                var newStatus = RecordingStatus.Recording;
                 try
                 {
                     // Event - Log the recording status
                     var status = Enum.GetName(typeof(RecordingStatus), newStatus);
-                    _eventPublisher.Publish("SetRecordingStatus", $"Call.Id: {Call.Id} status changed to {status}");
+                    GraphLogger.Info($"{nameof(SetRecordingStatus)} - Call.Id: {Call.Id} status changed to {status}");
 
                     // NOTE: if your implementation supports stopping the recording during the call, you can call the same method above with RecordingStatus.NotRecording
                     await source
@@ -271,7 +242,7 @@ namespace RecordingBot.Services.Bot
                     // e.g. bot joins via direct join - may not have the permissions
                     GraphLogger.Error(ex, $"Failed to flip the recording status to {newStatus}");
                     // Event - Recording status exception - failed to update 
-                    _eventPublisher.Publish("CallRecordingFlip", $"Failed to flip the recording status to {newStatus}");
+                    GraphLogger.Info($"{nameof(SetRecordingStatus)} - Failed to flip the recording status to {newStatus}");
                 }
 
             }).ForgetAndLogExceptionAsync(this.GraphLogger);
@@ -287,9 +258,8 @@ namespace RecordingBot.Services.Bot
         {
             var msg = $"Call status updated to {e.NewResource.State} - {e.NewResource.ResultInfo?.Message}";
             GraphLogger.Info(msg);
+
             // Event - Recording update e.g established/updated/start/ended
-            Console.WriteLine(msg);
-            _eventPublisher.Publish("CallOnUpdated", msg);
             if (e.OldResource.State != e.NewResource.State && e.NewResource.State == CallState.Established)
             {
                 if (!_isDisposed)
@@ -297,7 +267,7 @@ namespace RecordingBot.Services.Bot
                     // await ConfigureCallSettings();
 
                     // Call is established. We should start receiving Audio, we can inform clients that we have started recording.
-                    SetRecordingStatus(sender, null);
+                    SetRecordingStatus(sender, RecordingStatus.Recording);
 
                     // Start tracking
                     this.statusCheckTimer.Enabled = true;

@@ -1,23 +1,13 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
 
-// Last Modified On : 09-03-2020
-// ***********************************************************************
-// <copyright file="ServiceHost.cs" company="Microsoft">
-//     Copyright ©  2020
-// </copyright>
-// <summary></summary>
-// ***********************************************************************
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.WorkerService;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph.Communications.Common.Telemetry;
 using RecordingBot.Services.Bot;
 using RecordingBot.Services.Contract;
-using RecordingBot.Services.Util;
 using System;
 
 namespace RecordingBot.Services.ServiceSetup
@@ -51,21 +41,22 @@ namespace RecordingBot.Services.ServiceSetup
         {
             services.AddSingleton<IGraphLogger, GraphLogger>(_ => new GraphLogger("RecordingBot", redirectToTrace: true));
             services.Configure<AzureSettings>(configuration.GetSection(nameof(AzureSettings)));
+
             services.AddSingleton<IAzureSettings>(_ => _.GetRequiredService<IOptions<AzureSettings>>().Value);
-			services.AddSingleton<IEventPublisher, EventGridPublisher>(_ => new EventGridPublisher(_.GetRequiredService<IOptions<AzureSettings>>().Value));
+
+            var config = (AzureSettings)services.BuildServiceProvider().GetRequiredService<IAzureSettings>();
+
+            // App Insights logging. We're only interested in info msgs
+            services.AddLogging(loggingBuilder => 
+                loggingBuilder.AddFilter<Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider>("", LogLevel.Information));
+            services.AddApplicationInsightsTelemetryWorkerService(new ApplicationInsightsServiceOptions
+            {
+                InstrumentationKey = config.ApplicationInsightsKey
+            });
+
             services.AddSingleton<IBotService, BotService>();
 
             return this;
-        }
-
-        /// <summary>
-        /// Builds this instance.
-        /// </summary>
-        /// <returns>IServiceProvider.</returns>
-        public IServiceProvider Build()
-        {
-            ServiceProvider = Services.BuildServiceProvider();
-            return ServiceProvider;
         }
     }
 }

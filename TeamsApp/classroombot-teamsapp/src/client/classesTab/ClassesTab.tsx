@@ -139,7 +139,7 @@ export const ClassesTab = () => {
         if (!msGraphOboToken) { return; }
 
         // Use beta endpoint so we can filter on groups with Teams only
-        const endpoint = `https://graph.microsoft.com/beta/groups?$filter=resourceProvisioningOptions/Any(x:x eq 'Team')&$select=id,displayName`;
+        const endpoint = `https://graph.microsoft.com/v1.0/me/joinedTeams?$select=id,displayName`;
 
         await getGroupsForUrl(endpoint);
 

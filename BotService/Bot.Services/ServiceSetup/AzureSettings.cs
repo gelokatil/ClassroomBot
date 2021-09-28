@@ -85,9 +85,6 @@ namespace RecordingBot.Services.ServiceSetup
 
         public string AadTenantId { get; set; }
 
-        public string RedisConnectionString { get; set; }
-
-        public string GraphMeetingsUserGraphId { get; set; }
 
         /// <summary>
         /// Gets or sets the aad application secret.
@@ -137,23 +134,7 @@ namespace RecordingBot.Services.ServiceSetup
         /// <value>The events folder.</value>
         public string EventsFolder { get; set; }
 
-        // Event Grid Settings
-        /// <summary>
-        /// Gets or sets the name of the topic.
-        /// </summary>
-        /// <value>The name of the topic.</value>
-        public string TopicName { get; set; } = "recordingbotevents";
-
-        /// <summary>
-        /// Gets or sets the name of the region.
-        /// </summary>
-        /// <value>The name of the region.</value>
-        public string RegionName { get; set; } = "australiaeast";
-        /// <summary>
-        /// Gets or sets the topic key.
-        /// </summary>
-        /// <value>The topic key.</value>
-        public string TopicKey { get; set; }
+        public string ApplicationInsightsKey { get; set; }
 
         /// <summary>
         /// Gets or sets the audio settings.

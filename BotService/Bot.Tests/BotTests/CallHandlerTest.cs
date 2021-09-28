@@ -13,6 +13,7 @@
 // ***********************************************************************
 using ICSharpCode.SharpZipLib.Core;
 using ICSharpCode.SharpZipLib.Zip;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Communications.Calls;
 using Microsoft.Graph.Communications.Calls.Media;
@@ -59,10 +60,7 @@ namespace RecordingBot.Tests.BotTests
         /// The media session
         /// </summary>
         private Mock<ILocalMediaSession> _mediaSession;
-        /// <summary>
-        /// The event publisher
-        /// </summary>
-        private IEventPublisher _eventPublisher;
+
 
         /// <summary>
         /// Calls the handler test one time setup.
@@ -84,7 +82,6 @@ namespace RecordingBot.Tests.BotTests
             };
 
             _logger = new Mock<IGraphLogger>() { DefaultValue = DefaultValue.Mock };
-            _eventPublisher = new Mock<IEventPublisher>().Object;
 
             _mediaSession = new Mock<ILocalMediaSession>();
             _mediaSession.Setup(x => x.AudioSocket).Returns(new Mock<IAudioSocket>().Object);
@@ -113,7 +110,7 @@ namespace RecordingBot.Tests.BotTests
         public void TestOnParticipantUpdate()
         {
             var participantCount = 0;
-            var handler = new CallHandler(_call.Object, _settings, _eventPublisher);
+            var handler = new CallHandler(_call.Object, _settings);
 
             using (var fs = System.IO.File.OpenRead(Path.Combine("TestData", "participants.zip")))
             {

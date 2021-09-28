@@ -1,16 +1,4 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
 
-// Last Modified On : 08-17-2020
-// ***********************************************************************
-// <copyright file="IServiceHost.cs" company="Microsoft">
-//     Copyright ©  2020
-// </copyright>
-// <summary></summary>
-// ***********************************************************************
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RecordingBot.Services.ServiceSetup;
@@ -40,10 +28,6 @@ namespace RecordingBot.Services.Contract
         /// <param name="configuration">The configuration.</param>
         /// <returns>ServiceHost.</returns>
         ServiceHost Configure(IServiceCollection services, IConfiguration configuration);
-        /// <summary>
-        /// Builds this instance.
-        /// </summary>
-        /// <returns>IServiceProvider.</returns>
-        IServiceProvider Build();
+
     }
 }

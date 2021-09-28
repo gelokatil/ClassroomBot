@@ -94,21 +94,11 @@ spec:
           value: "{{ .Values.container.env.azureSetting.eventsFolder }}"
         - name: AzureSettings__MediaFolder
           value: "{{ .Values.container.env.azureSetting.mediaFolder }}"
-        - name: AzureSettings__TopicKey
+        - name: AzureSettings__ApplicationInsightsKey
           valueFrom:
             secretKeyRef:
               name: bot-application-secrets
-              key: topicKey
-        - name: AzureSettings__TopicName
-          valueFrom:
-            secretKeyRef:
-              name: bot-application-secrets
-              key: topicName
-        - name: AzureSettings__RegionName
-          valueFrom:
-            secretKeyRef:
-              name: bot-application-secrets
-              key: topicRegionName
+              key: applicationInsightsKey
         - name: AzureSettings__IsStereo
           value: "{{ .Values.container.env.azureSetting.isStereo }}"
         - name: AzureSettings__WAVSampleRate

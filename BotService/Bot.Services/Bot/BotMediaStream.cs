@@ -1,18 +1,4 @@
-// ***********************************************************************
-// Assembly         : RecordingBot.Services
-// 
-// Created          : 09-07-2020
-//
-
-// Last Modified On : 09-07-2020
-// ***********************************************************************
-// <copyright file="BotMediaStream.cs" company="Microsoft Corporation">
-//     Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT license.
-// </copyright>
-// <summary>The bot media stream.</summary>
-// ***********************************************************************-
-
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Communications.Calls;
 using Microsoft.Graph.Communications.Calls.Media;
 using Microsoft.Graph.Communications.Common;
@@ -23,9 +9,7 @@ using RecordingBot.Services.Contract;
 using RecordingBot.Services.Media;
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-
 
 namespace RecordingBot.Services.Bot
 {
@@ -50,7 +34,7 @@ namespace RecordingBot.Services.Bot
         /// <summary>
         /// The event publisher
         /// </summary>
-        private readonly IEventPublisher _eventPublisher;
+        private readonly ILogger<BotService> _eventPublisher;
 
         /// <summary>
         /// The call identifier
@@ -76,7 +60,6 @@ namespace RecordingBot.Services.Bot
             ILocalMediaSession mediaSession,
             string callId,
             IGraphLogger logger,
-            IEventPublisher eventPublisher,
             IAzureSettings settings
         )
             : base(logger)
@@ -87,7 +70,6 @@ namespace RecordingBot.Services.Bot
 
             this.participants = new List<IParticipant>();
 
-            _eventPublisher = eventPublisher;
             _callId = callId;
             _mediaStream = new MediaStream(
                 settings,
@@ -131,14 +113,14 @@ namespace RecordingBot.Services.Bot
         {
             await _mediaStream.End();
             // Event - Stop media occurs when the call stops recording
-            _eventPublisher.Publish("StopMediaStream", "Call stopped recording");
+            _eventPublisher.LogInformation("StopMediaStream - Call stopped recording");
         }
 
         /// <inheritdoc/>
         protected override void Dispose(bool disposing)
         {
             // Event Dispose of the bot media stream object
-            _eventPublisher.Publish("MediaStreamDispose", disposing.ToString());
+            _eventPublisher.LogInformation("MediaStreamDispose");
 
             base.Dispose(disposing);
 
@@ -152,7 +134,7 @@ namespace RecordingBot.Services.Bot
         /// <param name="e">The audio media received arguments.</param>
         private async void OnAudioMediaReceived(object sender, AudioMediaReceivedEventArgs e)
         {
-            this.GraphLogger.Info($"Received Audio: [AudioMediaReceivedEventArgs(Data=<{e.Buffer.Data.ToString()}>, Length={e.Buffer.Length}, Timestamp={e.Buffer.Timestamp})]");
+            this.GraphLogger.Verbose($"Received Audio: [AudioMediaReceivedEventArgs(Data=<{e.Buffer.Data.ToString()}>, Length={e.Buffer.Length}, Timestamp={e.Buffer.Timestamp})]");
 
             try
             {
