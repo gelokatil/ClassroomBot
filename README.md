@@ -204,6 +204,8 @@ This will run the application locally in debug-mode. NGrok should make it access
     - Connect-MicrosoftTeams
     - New-CsApplicationAccessPolicy -Identity Meeting-Update-Policy -AppIds &quot;$applicationId&quot; -Description &quot;Policy to allow meetings to be updated by a bot&quot;
     - Grant-CsApplicationAccessPolicy -PolicyName Meeting-Update-Policy -Identity &quot;$userId&quot;
+    - Set-CsApplicationMeetingConfiguration -AllowRemoveParticipantAppIds @{Add="$applicationId"}
+    
 Install the PS module with &quot;Install-Module -Name MicrosoftTeams&quot;
 ## Dev Only: Run Solution from Visual Studio
 If you&#39;re deploying to AKS, this won&#39;t be necessary.
