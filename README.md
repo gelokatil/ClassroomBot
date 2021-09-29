@@ -78,7 +78,7 @@ For developer machines you&#39;ll want to run the bot directly from Visual Studi
     - Domain for bot service - $botDomain.
     - Domain for Teams app - $teamsAppDNS.
 
-1. Configure &quot;%userprofile%\.ngrok2\ngrok.yml&quot; with those domains &amp; TCP address like so:
+1. Configure &quot;%userprofile%\\.ngrok2\ngrok.yml&quot; with those domains &amp; TCP address like so:
     - authtoken: $ngrokAuthToken
     - tunnels:
     - classroombot:
@@ -105,11 +105,11 @@ NGrok can be started with all tunnels with this command:
 The NGrok output should look something like this:
 
 - Region United States
-- tcp://1.tcp.ngrok.io:26065 -\&gt; localhost:8445
-- http://classroombot.ngrok.io -\&gt; https://localhost:9441
-- https://classroombot.ngrok.io -\&gt; https://localhost:9441
-- http://classroombotapp.ngrok.io -\&gt; http://localhost:3007
-- https://classroombotapp.ngrok.io -\&gt; http://localhost:3007
+- tcp://1.tcp.ngrok.io:26065 -> localhost:8445
+- http://classroombot.ngrok.io -> https://localhost:9441
+- https://classroombot.ngrok.io -> https://localhost:9441
+- http://classroombotapp.ngrok.io -> http://localhost:3007
+- https://classroombotapp.ngrok.io -> http://localhost:3007
 
 ## Dev Only: Generate SSL for Bot Media TCP
 
