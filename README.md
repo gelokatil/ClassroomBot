@@ -12,7 +12,7 @@ It&#39;s designed to run either locally via NGrok or in Azure Kubernetes Service
     - SSL certificate for NGrok URL (see below).
     - Visual Studio 2019
 3. **Production deploy** :
-  - Public bot domain (root-level) + DNS control for domain.
+    - Public bot domain (root-level) + DNS control for domain.
 4. Node JS LTS 14 to build Teams manifest.
 5. Docker for Windows to build bot image.
 6. Source code: [https://github.com/sambetts/ClassroomBot](https://github.com/sambetts/ClassroomBot)
@@ -20,6 +20,7 @@ It&#39;s designed to run either locally via NGrok or in Azure Kubernetes Service
     - AccessMedia.All
     - JoinGroupCall.All
     - JoinGroupCallAsGuest.All
+    - OnlineMeetings.ReadWrite.All
 
 # Required Configuration Information
 
@@ -55,8 +56,8 @@ Some files aren&#39;t tracked in git, so need creating locally from the template
 - Copy &quot;deploy\cluster-issuer - template.yaml&quot; to &quot;deploy\cluster-issuer.yaml&quot;
   - Edit &quot;cluster-issuer.yaml&quot; and replace &quot;$YOUR\_EMAIL\_HERE&quot; with your own email.
   - This is used for LetsEncrypt and needs to be a proper email address; not a free one (Gmail, Outlook, etc)
-- Copy &quot;TeamsApp\classroombot-teamsapp\template.env&quot; to &quot;TeamsApp\classroombot-teamsapp\.env&quot;
-- Copy &quot;BotService\Bot.Console\template.env&quot; to &quot;BotService\Bot.Console\.env&quot;
+- Copy &quot;TeamsApp\classroombot-teamsapp\template.env&quot; to &quot;TeamsApp\classroombot-teamsapp\\.env&quot;
+- Copy &quot;BotService\Bot.Console\template.env&quot; to &quot;BotService\Bot.Console\\.env&quot;
 
 ## Dev Only: Setup NGrok configuration
 
