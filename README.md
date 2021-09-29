@@ -220,4 +220,22 @@ If you&#39;re deploying to AKS, this won&#39;t be necessary.
 1. Run Visual Studio as administrator and start debugging &quot;Bot.Console&quot;.
 
 # Running Solution
-Once the bot service is running and the Teams app is deployed, you need to install the teams app if you&#39;re not side-loading with App Studio. Search for &quot;classroombot&quot; in the Teams app store and you should find it there. Open it and you&#39;ll see the single tab with the &quot;create a meeting&quot; page if the URLs are all correct &amp; working. The 1st time you run the app you&#39;ll have to grant access to the graph permissions if not done so proactively. The app will open a new window with a login &amp; consent flow, but will fail to redirect back. This is fine; we just want the consent for now.Refresh the app tab after granting consent and the list of teams your user is joined to should show.Click &quot;start meeting&quot; against one, enter some meeting details, and click &quot;start new class&quot;. This will create a new meeting for the group, and post in the default channel that a new meeting has started with a mention for anyone in that group.
+Once the bot service is running and the Teams app is deployed, you need to install the teams app if you&#39;re not side-loading with App Studio. Search for &quot;classroombot&quot; in the Teams app store and you should find it there. Open it and you&#39;ll see the single tab with the &quot;create a meeting&quot; page if the URLs are all correct &amp; working. 
+
+The 1st time you run the app you&#39;ll have to grant access to the graph permissions if not done so proactively. The app will open a new window with a login &amp; consent flow, but will fail to redirect back. This is fine; we just want the consent for now.Refresh the app tab after granting consent and the list of teams your user is joined to should show.Click &quot;start meeting&quot; against one, enter some meeting details, and click &quot;start new class&quot;. This will create a new meeting for the group, and post in the default channel that a new meeting has started with a mention for anyone in that group.
+
+# Updating Solution
+For the Teams App, just republish any changes directly to the App Service. There are more elegant ways of doing this, but this works & is easy at least.
+
+For the bot:
+- Build a new image, with a new tag (previous tag was 1.0.6). From the solution root:
+    - docker build -f ./build/Dockerfile . -t classroombotregistry.azurecr.io/classroombot:1.0.7
+- Login & push image:
+    - az acr login --name classroombotregistry
+    - docker push classroombotregistry.azurecr.io/classroombot:1.0.7
+- Update helm deployment (check params 1st):
+    - helm upgrade classroombot ./deploy/classroombot --namespace classroombot --set host=classroombot.teamsplatform.app --set public.ip=20.73.235.135 --set image.domain="classroombotregistry.azurecr.io" --set image.tag=1.0.7 --set scale.replicaCount=3
+- Verify pods are running after a few minutes:
+    - kubectl get pods -n classroombot
+
+**Important:** you have to pass in host, IP etc, so make sure you get the right values!
