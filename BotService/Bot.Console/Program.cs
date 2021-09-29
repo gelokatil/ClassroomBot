@@ -29,19 +29,24 @@ namespace RecordingBot.Console
 
             var bot = new Program();
 
+#if !DEBUG
             try
             {
+#endif
                 System.Console.WriteLine("ClassroomBot: booting");
 
                 bot.Boot();
                 bot.StartServer();
 
                 System.Console.WriteLine("ClassroomBot: running");
+#if !DEBUG
             }
             catch (Exception e)
             {
                 ExceptionHandler(e);
             }
+#endif
+
         }
 
         /// <summary>

@@ -230,7 +230,10 @@ namespace RecordingBot.Services.ServiceSetup
         /// <exception cref="Exception">No certificate with thumbprint {CertificateThumbprint} was found in the machine store.</exception>
         private X509Certificate2 GetCertificateFromStore()
         {
-
+            if (string.IsNullOrEmpty(CertificateThumbprint))
+            {
+                throw new ArgumentNullException(nameof(CertificateThumbprint), "No certificate thumbprint found");
+            }
             X509Store store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
             store.Open(OpenFlags.ReadOnly);
             try

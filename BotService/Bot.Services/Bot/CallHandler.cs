@@ -1,11 +1,8 @@
-
-using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Communications.Calls;
 using Microsoft.Graph.Communications.Calls.Media;
 using Microsoft.Graph.Communications.Common.Telemetry;
 using Microsoft.Graph.Communications.Resources;
-using Microsoft.Identity.Client;
 using RecordingBot.Model.Constants;
 using RecordingBot.Services.Contract;
 using RecordingBot.Services.ServiceSetup;
@@ -52,11 +49,9 @@ namespace RecordingBot.Services.Bot
         /// The is disposed
         /// </summary>
         private bool _isDisposed = false;
-        private readonly Timer statusCheckTimer;
-
 
         private List<IParticipant> _noKickRetryUserList = new();
-
+        private readonly Timer _classroomCheckTimer;
         // Key is: call ID + partipant ID
         private Dictionary<string, DateTime> _removeWarningsGivenCache = new();
 
@@ -86,10 +81,9 @@ namespace RecordingBot.Services.Bot
             }
 
             // Initialize timer to check statuses
-            var timer = new Timer(100 * 60); // every 60 seconds
-            timer.AutoReset = true;
-            timer.Elapsed += this.WebcamStatusCheck;
-            this.statusCheckTimer = timer;
+            _classroomCheckTimer = new Timer(100 * 60); // every 60 seconds
+            _classroomCheckTimer.AutoReset = true;
+            _classroomCheckTimer.Elapsed += this.WebcamStatusCheck;
 
             Console.WriteLine($"Joining call ID {statefulCall.Id} on chat thread {statefulCall.Resource.ChatInfo.ThreadId}");
         }
@@ -98,7 +92,7 @@ namespace RecordingBot.Services.Bot
         {
             _ = Task.Run(async () =>
             {
-                statusCheckTimer.Enabled = false;
+                _classroomCheckTimer.Enabled = false;
                 foreach (var p in this.Call.Participants)
                 {
                     // Don't check your own (bot) webcam status
@@ -119,7 +113,7 @@ namespace RecordingBot.Services.Bot
                         if (!userHasWebcamOn && !_noKickRetryUserList.Contains(p))
                         {
                             var userDisplayName = p.Resource?.Info?.Identity?.User?.DisplayName;
-                            Console.WriteLine($"{userDisplayName} does not have webcam on");
+                            GraphLogger.Info($"{userDisplayName} does not have webcam on");
 
                             // Have we warned this user for this call yet?
                             DateTime? lastBootWaring = UserWarned(this.Call.Id, p);
@@ -156,7 +150,7 @@ namespace RecordingBot.Services.Bot
                         }
                     } // !participantIsThisBot
                 }
-                statusCheckTimer.Enabled = true;
+                _classroomCheckTimer.Enabled = true;
             }).ForgetAndLogExceptionAsync(this.GraphLogger);
         }
 
@@ -198,7 +192,6 @@ namespace RecordingBot.Services.Bot
             }
         }
 
-
         /// <inheritdoc/>
         protected override Task HeartbeatAsync(ElapsedEventArgs args)
         {
@@ -208,46 +201,15 @@ namespace RecordingBot.Services.Bot
         /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
-
             base.Dispose(disposing);
             _isDisposed = true;
             this.Call.OnUpdated -= this.CallOnUpdated;
 
             this.BotMediaStream?.Dispose();
 
-            this.statusCheckTimer.Enabled = false;
-
             // Event - Dispose of the call completed ok
             GraphLogger.Info($"CallDisposedOK - Call.Id: {this.Call.Id}");
         }
-
-        private void SetRecordingStatus(ICall source, RecordingStatus newStatus)
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    // Event - Log the recording status
-                    var status = Enum.GetName(typeof(RecordingStatus), newStatus);
-                    GraphLogger.Info($"{nameof(SetRecordingStatus)} - Call.Id: {Call.Id} status changed to {status}");
-
-                    // NOTE: if your implementation supports stopping the recording during the call, you can call the same method above with RecordingStatus.NotRecording
-                    await source
-                        .UpdateRecordingStatusAsync(newStatus)
-                        .ConfigureAwait(false);
-
-                }
-                catch (Exception ex)
-                {
-                    // e.g. bot joins via direct join - may not have the permissions
-                    GraphLogger.Error(ex, $"Failed to flip the recording status to {newStatus}");
-                    // Event - Recording status exception - failed to update 
-                    GraphLogger.Info($"{nameof(SetRecordingStatus)} - Failed to flip the recording status to {newStatus}");
-                }
-
-            }).ForgetAndLogExceptionAsync(this.GraphLogger);
-        }
-
 
         /// <summary>
         /// Event fired when the call has been updated.
@@ -264,13 +226,9 @@ namespace RecordingBot.Services.Bot
             {
                 if (!_isDisposed)
                 {
-                    // await ConfigureCallSettings();
-
-                    // Call is established. We should start receiving Audio, we can inform clients that we have started recording.
-                    SetRecordingStatus(sender, RecordingStatus.Recording);
 
                     // Start tracking
-                    this.statusCheckTimer.Enabled = true;
+                    this._classroomCheckTimer.Enabled = true;
                 }
             }
 
