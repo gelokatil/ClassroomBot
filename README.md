@@ -16,11 +16,21 @@ It&#39;s designed to run either locally via NGrok or in Azure Kubernetes Service
 4. Node JS LTS 14 to build Teams manifest.
 5. Docker for Windows to build bot image.
 6. Source code: [https://github.com/sambetts/ClassroomBot](https://github.com/sambetts/ClassroomBot)
-7. Bot permissions in Azure AD application:
-    - AccessMedia.All
-    - JoinGroupCall.All
-    - JoinGroupCallAsGuest.All
-    - OnlineMeetings.ReadWrite.All
+7. Permissions in Azure AD application:
+    - Application permissions (for bot):
+        - AccessMedia.All
+        - JoinGroupCall.All
+        - JoinGroupCallAsGuest.All
+        - OnlineMeetings.ReadWrite.All
+    - Delegated permissions for Teams App (requested dynamically):
+        - OnlineMeetings.ReadWrite - to create meetings.
+        - ChannelMessage.Send - to publish meetings in a channel
+        - GroupMember.Read.All - to read members of a group, for mentions
+        - Directory.Read.All - to resolve group memebers to users
+        - email 
+        - openid 
+        - profile 
+        - offline_access
 
 # Required Configuration Information
 
